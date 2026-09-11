@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>TechZone - Despachos y Cartera</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="login-view" class="login-view">
+    <div class="login-box">
+      <div class="login-title"><span class="tz-tech">Tech</span><span class="tz-zone">Zone</span></div>
+      <div class="login-subtitle">Despachos &amp; Cartera</div>
+      <form id="login-form">
+        <div class="form-group">
+          <label>Correo</label>
+          <input type="email" id="login-email" required autocomplete="username" />
+        </div>
+        <div class="form-group">
+          <label>Contrasena</label>
+          <input type="password" id="login-password" required autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Iniciar sesion</button>
+        <div class="login-error" id="login-error"></div>
+      </form>
+      <div class="login-hint">Pide tus credenciales al administrador de la tienda.</div>
+    </div>
+  </div>
+
+  <div id="app-view" class="app-view" hidden>
+    <header class="app-header">
+      <div class="app-header-brand"><span class="tz-tech">Tech</span><span class="tz-zone">Zone</span></div>
+      <button id="btn-logout" class="btn btn-sm">Salir</button>
+    </header>
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="despachos">🚚 Despachos</button>
+      <button class="tab-btn" data-tab="cartera">🗂️ Cartera</button>
+    </nav>
+    <main id="content" class="content"></main>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+  <div id="modal-root"></div>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="firebase-config.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
