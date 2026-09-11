@@ -6,10 +6,10 @@
 // Para llenarlos: Firebase Console > Configuracion del proyecto (rueda dentada) >
 // "Tus apps" > agrega una app web > copia el objeto "firebaseConfig" y pegalo abajo.
 window.TECHZONE_FIREBASE_CONFIG = {
-  apiKey: 'REEMPLAZA_CON_TU_API_KEY',
-  authDomain: 'REEMPLAZA.firebaseapp.com',
-  projectId: 'REEMPLAZA',
-  storageBucket: 'REEMPLAZA.appspot.com',
-  messagingSenderId: 'REEMPLAZA',
-  appId: 'REEMPLAZA'
+  apiKey: 'AIzaSyAqY-B293mFLl1Mk2YOCkuvLrbiIB4SCGs',
+  authDomain: 'techzone-a0bdb.firebaseapp.com',
+  projectId: 'techzone-a0bdb',
+  storageBucket: 'techzone-a0bdb.firebasestorage.app',
+  messagingSenderId: '443231372709',
+  appId: '1:443231372709:web:e69f5da61530d386a0944c'
 };
