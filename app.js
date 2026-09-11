@@ -6,7 +6,8 @@
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {
-  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut,
+  setPersistence, browserLocalPersistence
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
   getFirestore, collection, doc, onSnapshot, query, where, getDocs,
@@ -28,6 +29,10 @@ const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 const storage = getStorage(firebaseApp);
+
+// Mantiene la sesion guardada en el dispositivo, para no tener que iniciar
+// sesion de nuevo cada vez que se abre la pagina.
+setPersistence(auth, browserLocalPersistence).catch(() => {});
 
 let despachosCache = [];
 let creditosCache = [];
@@ -59,6 +64,43 @@ function toast(msg, type) {
   el.textContent = msg;
   document.getElementById('toast-container').appendChild(el);
   setTimeout(() => el.remove(), 3200);
+}
+function playSuccessSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    const playTone = (freq, start, duration) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, now + start);
+      gain.gain.exponentialRampToValueAtTime(0.3, now + start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + start + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + start);
+      osc.stop(now + start + duration + 0.05);
+    };
+    playTone(880, 0, 0.12);
+    playTone(1320, 0.13, 0.2);
+  } catch (e) {
+    // audio no disponible en este dispositivo, no es critico
+  }
+}
+function showSuccessOverlay(titulo, subtitulo) {
+  playSuccessSound();
+  const el = document.createElement('div');
+  el.className = 'success-overlay';
+  el.innerHTML = `
+    <div class="success-overlay-box">
+      <div class="success-checkmark">✅</div>
+      <div class="success-title">${escapeHtml(titulo)}</div>
+      ${subtitulo ? `<div class="success-subtitle">${escapeHtml(subtitulo)}</div>` : ''}
+    </div>
+  `;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1800);
 }
 function showModal(html, onMount) {
   const root = document.getElementById('modal-root');
@@ -288,14 +330,16 @@ async function verificarSalida(codigo) {
     const snap = await getDocs(q);
     if (snap.empty) throw new Error('Codigo QR no encontrado');
     const docRef = snap.docs[0].ref;
+    let numeroFactura = '';
     await runTransaction(db, async (tx) => {
       const fresh = await tx.get(docRef);
       const data = fresh.data();
       if (data.estado !== 'pendiente') throw new Error(`Este pedido ya fue marcado como "${data.estado}"`);
+      numeroFactura = data.numeroFactura;
       tx.update(docRef, { estado: 'en_camino', fechaSalida: new Date().toISOString(), updatedAt: serverTimestamp() });
     });
     closeModal();
-    toast('Salida confirmada, pedido en camino', 'success');
+    showSuccessOverlay('Iniciando entrega', numeroFactura ? `Pedido ${numeroFactura}` : '');
   } catch (err) {
     toast(err.message, 'error');
   }
@@ -307,14 +351,16 @@ async function verificarEntrega(codigoEntrega) {
     const snap = await getDocs(q);
     if (snap.empty) throw new Error('Codigo de entrega no encontrado');
     const docRef = snap.docs[0].ref;
+    let numeroFactura = '';
     await runTransaction(db, async (tx) => {
       const fresh = await tx.get(docRef);
       const data = fresh.data();
       if (data.estado !== 'en_camino') throw new Error(`Este pedido esta en estado "${data.estado}", no se puede finalizar la entrega`);
+      numeroFactura = data.numeroFactura;
       tx.update(docRef, { estado: 'entregado', fechaEntrega: new Date().toISOString(), updatedAt: serverTimestamp() });
     });
     closeModal();
-    toast('Entrega finalizada', 'success');
+    showSuccessOverlay('Finalizo entrega', numeroFactura ? `Pedido ${numeroFactura}` : '');
   } catch (err) {
     toast(err.message, 'error');
   }

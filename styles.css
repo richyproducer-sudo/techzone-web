@@ -186,3 +186,30 @@ input[type=file] { color: var(--text-dim); font-size: 13px; }
 .toast.error { border-left-color: var(--red); }
 
 .moroso-row { border-color: rgba(255,92,92,0.5); }
+
+/* ---- Confirmacion visual (chulo verde) al escanear/confirmar ---- */
+.success-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.5);
+  z-index: 2000;
+  animation: fadeInOverlay 0.15s ease;
+  padding: 20px;
+}
+.success-overlay-box {
+  background: var(--bg-panel);
+  border: 2px solid var(--green);
+  border-radius: 16px;
+  padding: 30px 40px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  animation: popInOverlay 0.25s ease;
+}
+.success-checkmark { font-size: 58px; line-height: 1; margin-bottom: 8px; }
+.success-title { font-size: 20px; font-weight: 800; color: var(--green); }
+.success-subtitle { font-size: 13px; color: var(--text-dim); margin-top: 6px; }
+@keyframes popInOverlay { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
