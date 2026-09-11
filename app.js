@@ -433,11 +433,17 @@ async function registrarAbono(creditoId) {
   try {
     let comprobanteUrl = null;
     if (medio === 'transferencia' && fileInput.files[0]) {
-      const file = fileInput.files[0];
-      const path = `comprobantes/${creditoId}/${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, path);
-      await uploadBytes(storageRef, file);
-      comprobanteUrl = await getDownloadURL(storageRef);
+      try {
+        const file = fileInput.files[0];
+        const path = `comprobantes/${creditoId}/${Date.now()}_${file.name}`;
+        const storageRef = ref(storage, path);
+        await uploadBytes(storageRef, file);
+        comprobanteUrl = await getDownloadURL(storageRef);
+      } catch (uploadErr) {
+        // Storage puede no estar activado en el proyecto de Firebase (requiere
+        // el plan de pago); el abono se registra igual, solo que sin foto.
+        toast('No se pudo subir la foto del comprobante, el abono se registrara sin ella', 'error');
+      }
     }
 
     const docRef = doc(db, 'creditos', String(creditoId));
