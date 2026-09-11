@@ -37,6 +37,7 @@ button, input, select { font-family: inherit; font-size: 15px; }
   padding: 20px;
   background: radial-gradient(circle at 30% 20%, rgba(47,139,255,0.15), transparent 60%), var(--bg);
 }
+.login-view[hidden] { display: none; }
 .login-box {
   width: 100%;
   max-width: 360px;
