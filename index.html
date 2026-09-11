@@ -11,6 +11,9 @@
     <div class="login-box">
       <div class="login-title"><span class="tz-tech">Tech</span><span class="tz-zone">Zone</span></div>
       <div class="login-subtitle">Despachos &amp; Cartera</div>
+      <div id="not-configured-notice" class="login-error" style="display:none; margin-bottom:14px">
+        ⚠️ Esta pagina todavia no esta conectada a Firebase. El administrador de la tienda debe completar la configuracion (ver SETUP-WEB.md) antes de poder iniciar sesion aqui.
+      </div>
       <form id="login-form">
         <div class="form-group">
           <label>Correo</label>
@@ -20,7 +23,7 @@
           <label>Contrasena</label>
           <input type="password" id="login-password" required autocomplete="current-password" />
         </div>
-        <button type="submit" class="btn btn-primary btn-block">Iniciar sesion</button>
+        <button type="submit" class="btn btn-primary btn-block" id="btn-login-submit">Iniciar sesion</button>
         <div class="login-error" id="login-error"></div>
       </form>
       <div class="login-hint">Pide tus credenciales al administrador de la tienda.</div>

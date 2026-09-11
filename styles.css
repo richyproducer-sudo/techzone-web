@@ -81,6 +81,8 @@ input[type=file] { color: var(--text-dim); font-size: 13px; }
   cursor: pointer;
 }
 .btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:disabled:active { transform: none; }
 .btn-primary { background: linear-gradient(135deg, var(--blue), var(--blue-dark)); border-color: transparent; color: #fff; }
 .btn-sm { padding: 7px 12px; font-size: 13px; }
 .btn-block { width: 100%; }

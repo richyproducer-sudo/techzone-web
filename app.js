@@ -16,7 +16,15 @@ import {
   getStorage, ref, uploadBytes, getDownloadURL
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js';
 
-const firebaseApp = initializeApp(window.TECHZONE_FIREBASE_CONFIG);
+const firebaseConfig = window.TECHZONE_FIREBASE_CONFIG || {};
+const isConfigured = !String(firebaseConfig.apiKey || '').startsWith('REEMPLAZA');
+
+if (!isConfigured) {
+  document.getElementById('not-configured-notice').style.display = 'block';
+  document.getElementById('btn-login-submit').disabled = true;
+}
+
+const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 const storage = getStorage(firebaseApp);
@@ -80,7 +88,12 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
   try {
     await signInWithEmailAndPassword(auth, email, password);
   } catch (err) {
-    errorEl.textContent = 'Correo o contrasena incorrectos.';
+    const codigosCredencial = ['auth/wrong-password', 'auth/user-not-found', 'auth/invalid-credential', 'auth/invalid-email'];
+    if (codigosCredencial.includes(err.code)) {
+      errorEl.textContent = 'Correo o contrasena incorrectos.';
+    } else {
+      errorEl.textContent = `No se pudo conectar con Firebase (${err.code || err.message}). Revisa la configuracion en SETUP-WEB.md.`;
+    }
   }
 });
 
