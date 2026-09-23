@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Tienda</title>
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="catalogo.css" />
+<link rel="stylesheet" href="tienda.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-brand" id="tienda-nombre"><span class="tz-tech">Tech</span><span class="tz-zone">Zone</span></div>
+    <a class="btn btn-sm" id="link-catalogo" href="catalogo.html" style="text-decoration:none">📋 Ver catalogo</a>
+  </header>
+  <div class="cat-eslogan text-dim" id="tienda-eslogan">Elige tus productos y compra directo por WhatsApp</div>
+
+  <main class="content" style="padding-bottom:90px">
+    <input type="text" id="tienda-buscar" placeholder="Buscar producto..." style="width:100%; margin-bottom:10px" />
+    <div class="cat-chips" id="tienda-categorias"></div>
+    <div id="tienda-grid"><div class="empty-state">Cargando productos...</div></div>
+  </main>
+
+  <div id="carrito-flotante" class="carrito-flotante" hidden>
+    <button class="btn btn-primary btn-block" id="btn-ver-carrito">🛒 Ver pedido</button>
+  </div>
+
+  <div id="modal-root"></div>
+
+  <script src="firebase-config.js"></script>
+  <script type="module" src="tienda.js"></script>
+</body>
+</html>
