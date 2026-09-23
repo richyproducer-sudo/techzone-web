@@ -127,3 +127,29 @@
 .carrito-item-nombre { font-size: 13px; font-weight: 600; }
 .carrito-item-precio { font-size: 12px; color: var(--text-dim); }
 .carrito-total-row { display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 800; padding-top: 12px; margin-top: 6px; border-top: 1px solid var(--border); }
+
+/* ---- Pantallas grandes (tablet/PC): la barra de arriba, el banner y las
+   categorias dejan de verse como una columna angosta y usan el ancho real
+   de la pantalla, igual que .cat-grid ya hace en catalogo.css. ---- */
+@media (min-width: 900px) {
+  .shop-header { padding-left: max(20px, calc((100% - 1180px) / 2)); padding-right: max(20px, calc((100% - 1180px) / 2)); }
+  .shop-header-top { margin-bottom: 14px; }
+  .shop-logo { font-size: 24px; }
+  .shop-icon-btn { width: 44px; height: 44px; font-size: 19px; }
+  .shop-search { max-width: 480px; }
+
+  .shop-hero { padding: 46px 20px; }
+  .shop-hero-title { font-size: 34px; }
+  .shop-hero-sub { font-size: 15px; margin-top: 10px; }
+
+  .shop-trust { max-width: 700px; margin: 0 auto; grid-template-columns: repeat(3, 1fr); padding: 20px 10px; }
+  .shop-trust-item { font-size: 12.5px; }
+  .shop-trust-item span { font-size: 26px; }
+
+  .shop-cat-tiles { flex-wrap: wrap; overflow-x: visible; justify-content: flex-start; gap: 14px; }
+  .shop-cat-tile { width: 130px; }
+  .shop-cat-tile-label { font-size: 12px; padding: 8px 6px; }
+
+  .carrito-flotante { display: flex; justify-content: center; }
+  .carrito-flotante .btn { max-width: 480px; }
+}
