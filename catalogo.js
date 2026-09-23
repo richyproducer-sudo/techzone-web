@@ -208,7 +208,7 @@ function pintarGrid() {
     return `
     <div class="cat-card" data-producto="${escapeHtml(p.id)}">
       <div class="cat-img-wrap">
-        ${oferta ? `<span class="cat-badge-oferta">-${pctOferta}%</span>` : ''}
+        ${oferta ? `<span class="cat-badge-oferta">OFERTA -${pctOferta}%</span>` : ''}
         ${p.imagen ? `<img src="${p.imagen}" alt="" loading="lazy" />` : `<span class="cat-img-empty">📦</span>`}
       </div>
       <div class="cat-info">
@@ -349,7 +349,7 @@ function mostrarDetalleProducto(p) {
   const pctOferta = oferta ? Math.round((1 - p.precioVenta / p.precioAnterior) * 100) : 0;
   showModal(`
     <div class="cat-img-wrap" style="border-radius:12px; aspect-ratio:1.3">
-      ${oferta ? `<span class="cat-badge-oferta">-${pctOferta}%</span>` : ''}
+      ${oferta ? `<span class="cat-badge-oferta">OFERTA -${pctOferta}%</span>` : ''}
       ${p.imagen ? `<img src="${p.imagen}" alt="" />` : `<span class="cat-img-empty" style="font-size:48px">📦</span>`}
     </div>
     <div class="cat-cat" style="margin-top:14px">${escapeHtml(p.categoria || 'Otros')}</div>
