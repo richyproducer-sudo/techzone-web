@@ -141,17 +141,171 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 
 document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
 
+// ---------------------------------------------------------------------------
+// Desbloqueo con huella/rostro (WebAuthn) - candado local extra para el
+// celular. La sesion de Firebase ya queda guardada en el dispositivo
+// (browserLocalPersistence de arriba), asi que sin esto cualquiera que tome
+// el celular desbloqueado podria abrir esta pagina y ver Despachos/Cartera
+// directo. Esta pagina no tiene servidor propio para verificar firmas
+// WebAuthn de forma criptografica; se usa solo como candado del dispositivo:
+// si el sensor de huella/rostro del telefono aprueba (navigator.credentials
+// resuelve en vez de fallar), se muestra el contenido.
+const BIO_CRED_KEY = 'tz_bio_cred_id';
+const BIO_EMAIL_KEY = 'tz_bio_email';
+const BIO_DECLINED_KEY = 'tz_bio_declined';
+let bioLocked = false;
+
+function bufferToBase64(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+}
+function base64ToBuffer(b64) {
+  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+}
+async function biometriaDisponible() {
+  if (!window.PublicKeyCredential || !navigator.credentials) return false;
+  try {
+    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  } catch (err) {
+    return false;
+  }
+}
+function credencialRegistrada(email) {
+  return !!localStorage.getItem(BIO_CRED_KEY) && localStorage.getItem(BIO_EMAIL_KEY) === email;
+}
+async function registrarBiometria(email) {
+  const cred = await navigator.credentials.create({
+    publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp: { name: 'TechZone' },
+      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: email, displayName: email },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+      timeout: 60000
+    }
+  });
+  localStorage.setItem(BIO_CRED_KEY, bufferToBase64(cred.rawId));
+  localStorage.setItem(BIO_EMAIL_KEY, email);
+}
+async function verificarBiometria() {
+  const credId = localStorage.getItem(BIO_CRED_KEY);
+  if (!credId) throw new Error('No hay huella/rostro registrado en este dispositivo');
+  await navigator.credentials.get({
+    publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials: [{ id: base64ToBuffer(credId), type: 'public-key' }],
+      userVerification: 'required',
+      timeout: 60000
+    }
+  });
+}
+function olvidarBiometria() {
+  localStorage.removeItem(BIO_CRED_KEY);
+  localStorage.removeItem(BIO_EMAIL_KEY);
+  document.getElementById('btn-bio-olvidar').hidden = true;
+}
+function actualizarBotonOlvidar(email) {
+  document.getElementById('btn-bio-olvidar').hidden = !credencialRegistrada(email);
+}
+
+document.getElementById('btn-bio-olvidar').addEventListener('click', () => {
+  if (!confirm('¿Ya no pedir huella/rostro en este dispositivo? La proxima vez entraras con correo y contrasena.')) return;
+  olvidarBiometria();
+  toast('Desbloqueo con huella/rostro desactivado en este dispositivo', 'success');
+});
+
+function mostrarPantallaBloqueo() {
+  bioLocked = true;
+  if (unsubDespachos) unsubDespachos();
+  if (unsubCreditos) unsubCreditos();
+  document.getElementById('login-view').hidden = false;
+  document.getElementById('app-view').hidden = true;
+  document.getElementById('login-box-password').hidden = true;
+  document.getElementById('login-box-biometric').hidden = false;
+}
+function mostrarApp() {
+  bioLocked = false;
+  document.getElementById('login-view').hidden = true;
+  document.getElementById('app-view').hidden = false;
+  startListeners();
+  renderTab();
+  if (auth.currentUser) actualizarBotonOlvidar(auth.currentUser.email);
+}
+
+document.getElementById('btn-bio-unlock').addEventListener('click', async () => {
+  const errorEl = document.getElementById('bio-lock-error');
+  errorEl.textContent = '';
+  try {
+    await verificarBiometria();
+    mostrarApp();
+  } catch (err) {
+    errorEl.textContent = 'No se pudo verificar. Intenta de nuevo.';
+  }
+});
+document.getElementById('link-bio-logout').addEventListener('click', (e) => {
+  e.preventDefault();
+  signOut(auth);
+});
+
+// Si el registro biometrico ya esta activo para este usuario, cada vez que
+// se vuelve a esta pestana (por ejemplo, al cambiar de app en el celular y
+// regresar) se vuelve a pedir la huella/rostro, en vez de confiar solo en
+// que la pestana siga abierta.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || bioLocked) return;
+  const user = auth.currentUser;
+  if (user && credencialRegistrada(user.email)) mostrarPantallaBloqueo();
+});
+
+async function ofrecerActivarBiometria(email) {
+  if (credencialRegistrada(email)) return;
+  if (localStorage.getItem(BIO_DECLINED_KEY) === email) return;
+  if (!(await biometriaDisponible())) return;
+
+  const el = document.createElement('div');
+  el.className = 'bio-banner';
+  el.innerHTML = `
+    <span>🔒 ¿Activar desbloqueo con huella/rostro en este dispositivo? Asi nadie mas puede abrir esta pagina aunque tenga el celular desbloqueado.</span>
+    <div class="bio-banner-actions">
+      <button class="btn btn-sm" id="btn-bio-declinar">Ahora no</button>
+      <button class="btn btn-sm btn-primary" id="btn-bio-activar">Activar</button>
+    </div>
+  `;
+  document.body.appendChild(el);
+  document.getElementById('btn-bio-declinar').addEventListener('click', () => {
+    localStorage.setItem(BIO_DECLINED_KEY, email);
+    el.remove();
+  });
+  document.getElementById('btn-bio-activar').addEventListener('click', async () => {
+    try {
+      await registrarBiometria(email);
+      actualizarBotonOlvidar(email);
+      toast('Desbloqueo con huella/rostro activado', 'success');
+    } catch (err) {
+      toast('No se pudo activar: ' + (err.message || err.code || 'intenta de nuevo'), 'error');
+    }
+    el.remove();
+  });
+}
+
 onAuthStateChanged(auth, (user) => {
   const loginView = document.getElementById('login-view');
   const appView = document.getElementById('app-view');
   if (user) {
-    loginView.hidden = true;
-    appView.hidden = false;
-    startListeners();
-    renderTab();
+    if (credencialRegistrada(user.email)) {
+      mostrarPantallaBloqueo();
+    } else {
+      loginView.hidden = true;
+      appView.hidden = false;
+      startListeners();
+      renderTab();
+      ofrecerActivarBiometria(user.email);
+    }
   } else {
+    bioLocked = false;
     loginView.hidden = false;
     appView.hidden = true;
+    document.getElementById('login-box-password').hidden = false;
+    document.getElementById('login-box-biometric').hidden = true;
     if (unsubDespachos) unsubDespachos();
     if (unsubCreditos) unsubCreditos();
   }
