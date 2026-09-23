@@ -10,8 +10,8 @@ import {
   setPersistence, browserLocalPersistence
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
-  getFirestore, collection, doc, onSnapshot, query, where, getDocs,
-  runTransaction, orderBy, serverTimestamp
+  getFirestore, collection, doc, getDoc, onSnapshot, query, where, getDocs,
+  runTransaction, orderBy, limit, addDoc, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import {
   getStorage, ref, uploadBytes, getDownloadURL
@@ -325,7 +325,94 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
 
 function renderTab() {
   if (currentTab === 'despachos') renderDespachos();
-  else renderCartera();
+  else if (currentTab === 'cartera') renderCartera();
+  else if (currentTab === 'asistencia') renderAsistencia();
+}
+
+// ---------------------------------------------------------------------------
+// Asistencia: marcar entrada al trabajo con huella/rostro (WebAuthn, ver
+// seccion de biometria arriba), comparando contra la hora de entrada que el
+// Dueño le configuro a esta persona en Configuracion > Roles del equipo en
+// Firebase (app de escritorio). El registro se guarda en Firestore
+// (coleccion "asistencia") para que el Dueño lo vea en Monitoreo.
+async function renderAsistencia() {
+  const content = document.getElementById('content');
+  const user = auth.currentUser;
+  content.innerHTML = `<div class="empty-state">Cargando...</div>`;
+
+  let perfil = {};
+  try {
+    const snap = await getDoc(doc(db, 'usuarios', user.uid));
+    if (snap.exists()) perfil = snap.data();
+  } catch (err) {
+    // Sin permiso o sin perfil todavia: se sigue mostrando la pantalla, solo
+    // sin hora de entrada configurada.
+  }
+
+  let ultimas = [];
+  try {
+    const q = query(collection(db, 'asistencia'), where('uid', '==', user.uid), orderBy('fecha', 'desc'), limit(10));
+    const snap = await getDocs(q);
+    ultimas = snap.docs.map((d) => d.data());
+  } catch (err) {
+    // idem: se ignora, la pantalla sigue funcionando sin el historial.
+  }
+
+  const bioActiva = credencialRegistrada(user.email);
+
+  content.innerHTML = `
+    <div class="card">
+      <div class="card-title">🕒 Marcar entrada</div>
+      ${perfil.horaEntrada
+        ? `<div class="card-row"><span>Tu horario</span><strong>${escapeHtml(perfil.horaEntrada)}</strong></div>`
+        : `<p class="text-dim" style="font-size:12px">Tu hora de entrada todavia no esta configurada (lo hace el administrador desde la app de escritorio, en Configuracion).</p>`
+      }
+      ${bioActiva
+        ? `<button class="btn btn-primary btn-block" id="btn-marcar-entrada" style="margin-top:10px">🔓 Verificar con huella/rostro y marcar entrada</button>`
+        : `<div class="login-error" style="margin-top:10px">Primero activa el desbloqueo con huella/rostro: cierra sesion y vuelve a entrar, ahi te lo vuelve a ofrecer.</div>`
+      }
+    </div>
+    <div class="section-title">Tus ultimas marcaciones</div>
+    ${ultimas.length ? ultimas.map((a) => `
+      <div class="card">
+        <div class="card-row">
+          <span>${fmtDateTime(a.fecha)}</span>
+          ${a.tarde ? '<span class="badge badge-red">Tarde</span>' : '<span class="badge badge-green">A tiempo</span>'}
+        </div>
+      </div>
+    `).join('') : '<div class="empty-state">Aun no has marcado entrada.</div>'}
+  `;
+
+  const btn = document.getElementById('btn-marcar-entrada');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    try {
+      await verificarBiometria();
+      const ahora = new Date();
+      let tarde = false;
+      if (perfil.horaEntrada) {
+        const [h, m] = perfil.horaEntrada.split(':').map(Number);
+        const limite = new Date(ahora);
+        limite.setHours(h, m, 0, 0);
+        tarde = ahora > limite;
+      }
+      await addDoc(collection(db, 'asistencia'), {
+        uid: user.uid,
+        email: user.email,
+        nombre: perfil.nombre || user.email,
+        fecha: ahora.toISOString(),
+        horaEntradaEsperada: perfil.horaEntrada || null,
+        tarde,
+        registradoEn: serverTimestamp()
+      });
+      showSuccessOverlay(tarde ? 'Entrada marcada (tarde)' : 'Entrada marcada a tiempo', fmtDateTime(ahora.toISOString()));
+      renderAsistencia();
+    } catch (err) {
+      toast('No se pudo marcar la entrada: ' + (err.message || err.code || 'intenta de nuevo'), 'error');
+      btn.disabled = false;
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
