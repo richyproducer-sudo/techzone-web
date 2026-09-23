@@ -55,6 +55,10 @@ function fmtDateTime(iso) {
   if (!iso) return '';
   return new Date(iso).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
+function fmtHora(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+}
 function escapeHtml(str) {
   return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -330,11 +334,19 @@ function renderTab() {
 }
 
 // ---------------------------------------------------------------------------
-// Asistencia: marcar entrada al trabajo con un solo boton, comparando la
-// hora contra el horario que el Dueño le configuro a esta persona en
-// Configuracion > Roles del equipo en Firebase (app de escritorio). El
-// registro se guarda en Firestore (coleccion "asistencia") para que el
-// Dueño lo vea en Monitoreo.
+// Asistencia: marcar los 4 momentos del dia (entrada, salida a almuerzo,
+// regreso de almuerzo, salida), comparando la entrada contra el horario que
+// el Dueño le configuro a esta persona en Configuracion > Roles del equipo
+// en Firebase (app de escritorio). Cada registro se guarda en Firestore
+// (coleccion "asistencia") para que el Dueño lo vea en Monitoreo. Solo se
+// permite marcar cada tipo una vez por dia.
+const TIPOS_ASISTENCIA = [
+  { tipo: 'entrada', label: 'Entrada' },
+  { tipo: 'salida_almuerzo', label: 'Salida a almuerzo' },
+  { tipo: 'regreso_almuerzo', label: 'Regreso de almuerzo' },
+  { tipo: 'salida', label: 'Salida' }
+];
+
 async function renderAsistencia() {
   const content = document.getElementById('content');
   const user = auth.currentUser;
@@ -351,41 +363,54 @@ async function renderAsistencia() {
 
   let ultimas = [];
   try {
-    const q = query(collection(db, 'asistencia'), where('uid', '==', user.uid), orderBy('fecha', 'desc'), limit(10));
+    const q = query(collection(db, 'asistencia'), where('uid', '==', user.uid), orderBy('fecha', 'desc'), limit(20));
     const snap = await getDocs(q);
     ultimas = snap.docs.map((d) => d.data());
   } catch (err) {
     // idem: se ignora, la pantalla sigue funcionando sin el historial.
   }
 
+  const hoy = new Date().toDateString();
+  const marcadasHoy = new Map();
+  ultimas.filter((a) => new Date(a.fecha).toDateString() === hoy).forEach((a) => {
+    if (!marcadasHoy.has(a.tipo)) marcadasHoy.set(a.tipo, a);
+  });
+
   content.innerHTML = `
     <div class="card">
-      <div class="card-title">🕒 Marcar entrada</div>
+      <div class="card-title">🕒 Marcar asistencia</div>
       ${perfil.horaEntrada
-        ? `<div class="card-row"><span>Tu horario</span><strong>${escapeHtml(perfil.horaEntrada)}</strong></div>`
+        ? `<div class="card-row"><span>Tu horario de entrada</span><strong>${escapeHtml(perfil.horaEntrada)}</strong></div>`
         : `<p class="text-dim" style="font-size:12px">Tu hora de entrada todavia no esta configurada (lo hace el administrador desde la app de escritorio, en Configuracion).</p>`
       }
-      <button class="btn btn-primary btn-block" id="btn-marcar-entrada" style="margin-top:10px">Marcar entrada</button>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px">
+        ${TIPOS_ASISTENCIA.map(({ tipo, label }) => {
+          const marcada = marcadasHoy.get(tipo);
+          return marcada
+            ? `<button class="btn" disabled>${escapeHtml(label)}: ${fmtHora(marcada.fecha)} ✓</button>`
+            : `<button class="btn btn-primary" data-marcar="${tipo}" data-label="${escapeHtml(label)}">${escapeHtml(label)}</button>`;
+        }).join('')}
+      </div>
     </div>
     <div class="section-title">Tus ultimas marcaciones</div>
     ${ultimas.length ? ultimas.map((a) => `
       <div class="card">
         <div class="card-row">
-          <span>${fmtDateTime(a.fecha)}</span>
-          ${a.tarde ? '<span class="badge badge-red">Tarde</span>' : '<span class="badge badge-green">A tiempo</span>'}
+          <span>${TIPOS_ASISTENCIA.find((t) => t.tipo === a.tipo)?.label || a.tipo} &middot; ${fmtDateTime(a.fecha)}</span>
+          ${a.tipo === 'entrada' ? (a.tarde ? '<span class="badge badge-red">Tarde</span>' : '<span class="badge badge-green">A tiempo</span>') : ''}
         </div>
       </div>
-    `).join('') : '<div class="empty-state">Aun no has marcado entrada.</div>'}
+    `).join('') : '<div class="empty-state">Aun no has marcado asistencia.</div>'}
   `;
 
-  const btn = document.getElementById('btn-marcar-entrada');
-  if (!btn) return;
-  btn.addEventListener('click', async () => {
+  content.querySelectorAll('[data-marcar]').forEach((btn) => btn.addEventListener('click', async () => {
+    const tipo = btn.dataset.marcar;
+    const label = btn.dataset.label;
     btn.disabled = true;
     try {
       const ahora = new Date();
       let tarde = false;
-      if (perfil.horaEntrada) {
+      if (tipo === 'entrada' && perfil.horaEntrada) {
         const [h, m] = perfil.horaEntrada.split(':').map(Number);
         const limite = new Date(ahora);
         limite.setHours(h, m, 0, 0);
@@ -395,18 +420,19 @@ async function renderAsistencia() {
         uid: user.uid,
         email: user.email,
         nombre: perfil.nombre || user.email,
+        tipo,
         fecha: ahora.toISOString(),
-        horaEntradaEsperada: perfil.horaEntrada || null,
+        horaEntradaEsperada: tipo === 'entrada' ? (perfil.horaEntrada || null) : null,
         tarde,
         registradoEn: serverTimestamp()
       });
-      showSuccessOverlay(tarde ? 'Entrada marcada (tarde)' : 'Entrada marcada a tiempo', fmtDateTime(ahora.toISOString()));
+      showSuccessOverlay(`${label} marcada`, fmtDateTime(ahora.toISOString()));
       renderAsistencia();
     } catch (err) {
-      toast('No se pudo marcar la entrada: ' + (err.message || err.code || 'intenta de nuevo'), 'error');
+      toast('No se pudo marcar: ' + (err.message || err.code || 'intenta de nuevo'), 'error');
       btn.disabled = false;
     }
-  });
+  }));
 }
 
 // ---------------------------------------------------------------------------
