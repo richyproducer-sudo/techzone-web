@@ -330,11 +330,11 @@ function renderTab() {
 }
 
 // ---------------------------------------------------------------------------
-// Asistencia: marcar entrada al trabajo con huella/rostro (WebAuthn, ver
-// seccion de biometria arriba), comparando contra la hora de entrada que el
-// Dueño le configuro a esta persona en Configuracion > Roles del equipo en
-// Firebase (app de escritorio). El registro se guarda en Firestore
-// (coleccion "asistencia") para que el Dueño lo vea en Monitoreo.
+// Asistencia: marcar entrada al trabajo con un solo boton, comparando la
+// hora contra el horario que el Dueño le configuro a esta persona en
+// Configuracion > Roles del equipo en Firebase (app de escritorio). El
+// registro se guarda en Firestore (coleccion "asistencia") para que el
+// Dueño lo vea en Monitoreo.
 async function renderAsistencia() {
   const content = document.getElementById('content');
   const user = auth.currentUser;
@@ -358,8 +358,6 @@ async function renderAsistencia() {
     // idem: se ignora, la pantalla sigue funcionando sin el historial.
   }
 
-  const bioActiva = credencialRegistrada(user.email);
-
   content.innerHTML = `
     <div class="card">
       <div class="card-title">🕒 Marcar entrada</div>
@@ -367,10 +365,7 @@ async function renderAsistencia() {
         ? `<div class="card-row"><span>Tu horario</span><strong>${escapeHtml(perfil.horaEntrada)}</strong></div>`
         : `<p class="text-dim" style="font-size:12px">Tu hora de entrada todavia no esta configurada (lo hace el administrador desde la app de escritorio, en Configuracion).</p>`
       }
-      ${bioActiva
-        ? `<button class="btn btn-primary btn-block" id="btn-marcar-entrada" style="margin-top:10px">🔓 Verificar con huella/rostro y marcar entrada</button>`
-        : `<div class="login-error" style="margin-top:10px">Primero activa el desbloqueo con huella/rostro: cierra sesion y vuelve a entrar, ahi te lo vuelve a ofrecer.</div>`
-      }
+      <button class="btn btn-primary btn-block" id="btn-marcar-entrada" style="margin-top:10px">Marcar entrada</button>
     </div>
     <div class="section-title">Tus ultimas marcaciones</div>
     ${ultimas.length ? ultimas.map((a) => `
@@ -388,7 +383,6 @@ async function renderAsistencia() {
   btn.addEventListener('click', async () => {
     btn.disabled = true;
     try {
-      await verificarBiometria();
       const ahora = new Date();
       let tarde = false;
       if (perfil.horaEntrada) {
