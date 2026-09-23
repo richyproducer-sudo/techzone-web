@@ -76,10 +76,15 @@ async function cargar() {
     document.getElementById('tienda-nombre').textContent = meta.nombreTienda;
     document.title = 'Tienda - ' + meta.nombreTienda;
   }
+  if (meta.eslogan) document.getElementById('tienda-eslogan').textContent = meta.eslogan;
+  if (meta.telefono) {
+    document.getElementById('tienda-footer-tel').textContent = '📱 WhatsApp de la tienda: ' + meta.telefono;
+  }
 
   if (!productos.length) {
     grid.innerHTML = `<div class="empty-state">Todavia no hay productos publicados.</div>`;
     document.getElementById('tienda-categorias').innerHTML = '';
+    document.getElementById('tienda-categorias-tiles').innerHTML = '';
     return;
   }
 
@@ -87,12 +92,37 @@ async function cargar() {
   carrito = carrito.filter((item) => productos.some((p) => p.id === item.id && p.stock > 0));
   guardarCarrito();
 
+  pintarCategoriaTiles();
   pintarCategorias();
   pintarGrid();
   actualizarBotonFlotante();
 
   document.getElementById('tienda-buscar').addEventListener('input', pintarGrid);
   document.getElementById('btn-ver-carrito').addEventListener('click', mostrarCarritoModal);
+  document.getElementById('btn-carrito-header').addEventListener('click', mostrarCarritoModal);
+}
+
+// Una tarjeta grande por categoria (con la foto del primer producto de esa
+// categoria que tenga imagen), al estilo de las tiendas de tecnologia: mas
+// facil de tocar en el celular que una lista de texto.
+function pintarCategoriaTiles() {
+  const categorias = [...new Set(productos.map((p) => p.categoria || 'Otros'))];
+  const cont = document.getElementById('tienda-categorias-tiles');
+  cont.innerHTML = categorias.map((c) => {
+    const ejemplo = productos.find((p) => (p.categoria || 'Otros') === c && p.imagen);
+    return `
+      <div class="shop-cat-tile ${c === categoriaActiva ? 'active' : ''}" data-cat-tile="${escapeHtml(c)}">
+        <div class="shop-cat-tile-img">${ejemplo ? `<img src="${ejemplo.imagen}" alt="" loading="lazy" />` : '📦'}</div>
+        <div class="shop-cat-tile-label">${escapeHtml(c)}</div>
+      </div>
+    `;
+  }).join('');
+  cont.querySelectorAll('[data-cat-tile]').forEach((tile) => tile.addEventListener('click', () => {
+    categoriaActiva = tile.dataset.catTile;
+    pintarCategorias();
+    pintarGrid();
+    document.getElementById('tienda-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
 }
 
 function pintarCategorias() {
@@ -102,6 +132,7 @@ function pintarCategorias() {
   cont.querySelectorAll('[data-cat]').forEach((btn) => btn.addEventListener('click', () => {
     categoriaActiva = btn.dataset.cat;
     pintarCategorias();
+    pintarCategoriaTiles();
     pintarGrid();
   }));
 }
@@ -183,7 +214,12 @@ function cantidadTotalCarrito() {
 function actualizarBotonFlotante() {
   const cont = document.getElementById('carrito-flotante');
   const btn = document.getElementById('btn-ver-carrito');
+  const badge = document.getElementById('carrito-badge');
   const n = cantidadTotalCarrito();
+
+  badge.hidden = n === 0;
+  badge.textContent = n;
+
   if (n === 0) {
     cont.hidden = true;
     return;

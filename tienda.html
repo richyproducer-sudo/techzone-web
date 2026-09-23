@@ -9,17 +9,42 @@
 <link rel="stylesheet" href="tienda.css" />
 </head>
 <body>
-  <header class="app-header">
-    <div class="app-header-brand" id="tienda-nombre"><span class="tz-tech">Tech</span><span class="tz-zone">Zone</span></div>
-    <a class="btn btn-sm" id="link-catalogo" href="catalogo.html" style="text-decoration:none">📋 Ver catalogo</a>
+  <header class="shop-header">
+    <div class="shop-header-top">
+      <div class="shop-logo" id="tienda-nombre"><span class="tz-tech">Tech</span><span class="tz-zone">Zone</span></div>
+      <div class="shop-header-actions">
+        <a class="shop-icon-btn" href="catalogo.html" title="Ver catalogo">📋</a>
+        <button class="shop-icon-btn" id="btn-carrito-header" title="Ver pedido">🛒<span class="shop-cart-badge" id="carrito-badge" hidden>0</span></button>
+      </div>
+    </div>
+    <input type="text" id="tienda-buscar" placeholder="Buscar producto..." class="shop-search" />
   </header>
-  <div class="cat-eslogan text-dim" id="tienda-eslogan">Elige tus productos y compra directo por WhatsApp</div>
+
+  <section class="shop-hero">
+    <div class="shop-hero-title" id="tienda-eslogan">Los mejores precios en tecnologia gamer</div>
+    <div class="shop-hero-sub">Elige tus productos y arma tu pedido, te llega el total por WhatsApp</div>
+  </section>
+
+  <section class="shop-trust">
+    <div class="shop-trust-item"><span>🚚</span>Envios a todo el pais</div>
+    <div class="shop-trust-item"><span>🛡️</span>Garantia en todos los productos</div>
+    <div class="shop-trust-item"><span>💬</span>Atencion directa por WhatsApp</div>
+  </section>
 
   <main class="content" style="padding-bottom:90px">
-    <input type="text" id="tienda-buscar" placeholder="Buscar producto..." style="width:100%; margin-bottom:10px" />
+    <div class="section-title" style="margin-top:0">Categorias</div>
+    <div class="shop-cat-tiles" id="tienda-categorias-tiles"></div>
+
     <div class="cat-chips" id="tienda-categorias"></div>
+    <div class="section-title">Productos</div>
     <div id="tienda-grid"><div class="empty-state">Cargando productos...</div></div>
   </main>
+
+  <footer class="shop-footer">
+    <div class="shop-footer-brand"><span class="tz-tech">Tech</span><span class="tz-zone">Zone</span></div>
+    <div id="tienda-footer-tel" class="text-dim" style="font-size:12.5px"></div>
+    <div class="text-dim" style="font-size:11px; margin-top:6px">Compra 100% por WhatsApp, sin registros ni tarjetas.</div>
+  </footer>
 
   <div id="carrito-flotante" class="carrito-flotante" hidden>
     <button class="btn btn-primary btn-block" id="btn-ver-carrito">🛒 Ver pedido</button>
