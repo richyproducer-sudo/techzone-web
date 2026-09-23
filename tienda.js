@@ -4,7 +4,7 @@
 // publicarCatalogo, y Catalogo en el menu del escritorio), asi que siempre
 // refleja el inventario real que el Dueño publico.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { getFirestore, collection, getDocs, doc, setDoc } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 function money(n) {
   return '$ ' + Math.round(n || 0).toLocaleString('es-CO');
@@ -31,6 +31,34 @@ function closeModal() {
 // Numero de WhatsApp donde llegan los pedidos (fijo, igual que en catalogo.js).
 const WHATSAPP_TIENDA = '3135639329';
 const CARRITO_KEY = 'tz_carrito';
+const CODIGO_KEY = 'tz_codigo_descuento';
+
+// Un codigo de descuento por dispositivo/navegador (comparte localStorage
+// con catalogo.js, asi que es el mismo codigo en las dos paginas).
+function generarCodigoAleatorio() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let codigo = 'TZ-';
+  for (let i = 0; i < 6; i++) codigo += chars[Math.floor(Math.random() * chars.length)];
+  return codigo;
+}
+async function obtenerOCrearCodigoDescuento(porcentaje) {
+  try {
+    const guardado = localStorage.getItem(CODIGO_KEY);
+    if (guardado) return JSON.parse(guardado);
+  } catch (err) {
+    // sin acceso a localStorage: se sigue sin codigo, no rompe la pagina.
+  }
+  if (!porcentaje) return null;
+
+  const registro = { codigo: generarCodigoAleatorio(), porcentaje, creadoEn: new Date().toISOString(), usado: false };
+  try {
+    await setDoc(doc(db, 'descuentos', registro.codigo), registro);
+  } catch (err) {
+    return null;
+  }
+  try { localStorage.setItem(CODIGO_KEY, JSON.stringify(registro)); } catch (err) {}
+  return registro;
+}
 
 const firebaseConfig = window.TECHZONE_FIREBASE_CONFIG || {};
 const firebaseApp = initializeApp(firebaseConfig);
@@ -40,6 +68,7 @@ let productos = [];
 let meta = {};
 let categoriaActiva = 'Todos';
 let carrito = cargarCarritoGuardado();
+let codigoDescuento = null;
 
 function cargarCarritoGuardado() {
   try {
@@ -89,6 +118,9 @@ async function cargar() {
     return;
   }
 
+  codigoDescuento = await obtenerOCrearCodigoDescuento(meta.descuentoWebPorcentaje || 0);
+  pintarBannerDescuento();
+
   // Si algo del carrito guardado ya no existe (o se agoto), se limpia.
   carrito = carrito.filter((item) => productos.some((p) => p.id === item.id && p.stock > 0));
   guardarCarrito();
@@ -107,14 +139,17 @@ async function cargar() {
 // categoria que tenga imagen), al estilo de las tiendas de tecnologia: mas
 // facil de tocar en el celular que una lista de texto.
 function pintarCategoriaTiles() {
-  const categorias = [...new Set(productos.map((p) => p.categoria || 'Otros'))];
+  const hayOfertas = productos.some(tieneOferta);
+  const categorias = [...(hayOfertas ? ['Ofertas'] : []), ...new Set(productos.map((p) => p.categoria || 'Otros'))];
   const cont = document.getElementById('tienda-categorias-tiles');
   cont.innerHTML = categorias.map((c) => {
-    const ejemplo = productos.find((p) => (p.categoria || 'Otros') === c && p.imagen);
+    const ejemplo = c === 'Ofertas'
+      ? productos.find((p) => tieneOferta(p) && p.imagen)
+      : productos.find((p) => (p.categoria || 'Otros') === c && p.imagen);
     return `
-      <div class="shop-cat-tile ${c === categoriaActiva ? 'active' : ''}" data-cat-tile="${escapeHtml(c)}">
+      <div class="shop-cat-tile ${c === categoriaActiva ? 'active' : ''} ${c === 'Ofertas' ? 'cat-chip-oferta' : ''}" data-cat-tile="${escapeHtml(c)}">
         <div class="shop-cat-tile-img">${ejemplo ? `<img src="${ejemplo.imagen}" alt="" loading="lazy" />` : '📦'}</div>
-        <div class="shop-cat-tile-label">${escapeHtml(c)}</div>
+        <div class="shop-cat-tile-label">${c === 'Ofertas' ? '🔥 ' : ''}${escapeHtml(c)}</div>
       </div>
     `;
   }).join('');
@@ -126,10 +161,41 @@ function pintarCategoriaTiles() {
   }));
 }
 
+function pintarBannerDescuento() {
+  const cont = document.getElementById('codigo-descuento-banner');
+  if (!cont) return;
+  if (!codigoDescuento) {
+    cont.innerHTML = '';
+    return;
+  }
+  cont.innerHTML = `
+    <div class="codigo-descuento-card">
+      <div class="codigo-descuento-icono">🎁</div>
+      <div class="codigo-descuento-texto">
+        Tu codigo de descuento (${codigoDescuento.porcentaje}% OFF), menciónalo al comprar:<br />
+        <span class="codigo-descuento-valor">${escapeHtml(codigoDescuento.codigo)}</span>
+      </div>
+      <button class="btn btn-sm codigo-descuento-copiar" id="btn-copiar-codigo-descuento">📋</button>
+    </div>
+  `;
+  document.getElementById('btn-copiar-codigo-descuento').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(codigoDescuento.codigo);
+    } catch (err) {
+      // sin acceso al portapapeles: el codigo ya esta visible en pantalla igual.
+    }
+  });
+}
+
+function tieneOferta(p) {
+  return p.precioAnterior && p.precioAnterior > p.precioVenta;
+}
+
 function pintarCategorias() {
-  const categorias = ['Todos', ...new Set(productos.map((p) => p.categoria || 'Otros'))];
+  const hayOfertas = productos.some(tieneOferta);
+  const categorias = [...(hayOfertas ? ['Ofertas'] : []), 'Todos', ...new Set(productos.map((p) => p.categoria || 'Otros'))];
   const cont = document.getElementById('tienda-categorias');
-  cont.innerHTML = categorias.map((c) => `<button class="cat-chip ${c === categoriaActiva ? 'active' : ''}" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('');
+  cont.innerHTML = categorias.map((c) => `<button class="cat-chip ${c === categoriaActiva ? 'active' : ''} ${c === 'Ofertas' ? 'cat-chip-oferta' : ''}" data-cat="${escapeHtml(c)}">${c === 'Ofertas' ? '🔥 ' : ''}${escapeHtml(c)}</button>`).join('');
   cont.querySelectorAll('[data-cat]').forEach((btn) => btn.addEventListener('click', () => {
     categoriaActiva = btn.dataset.cat;
     pintarCategorias();
@@ -146,7 +212,7 @@ function cantidadEnCarrito(id) {
 function pintarGrid() {
   const q = (document.getElementById('tienda-buscar').value || '').toLowerCase();
   const filtrados = productos.filter((p) =>
-    (categoriaActiva === 'Todos' || (p.categoria || 'Otros') === categoriaActiva) &&
+    (categoriaActiva === 'Todos' || (categoriaActiva === 'Ofertas' ? tieneOferta(p) : (p.categoria || 'Otros') === categoriaActiva)) &&
     (!q || (p.nombre || '').toLowerCase().includes(q))
   );
 
@@ -159,15 +225,21 @@ function pintarGrid() {
   grid.innerHTML = `<div class="cat-grid">${filtrados.map((p) => {
     const cant = cantidadEnCarrito(p.id);
     const agotado = p.stock <= 0;
+    const oferta = tieneOferta(p);
+    const pctOferta = oferta ? Math.round((1 - p.precioVenta / p.precioAnterior) * 100) : 0;
     return `
     <div class="cat-card" data-producto="${escapeHtml(p.id)}">
       <div class="cat-img-wrap">
+        ${oferta ? `<span class="cat-badge-oferta">-${pctOferta}%</span>` : ''}
         ${p.imagen ? `<img src="${p.imagen}" alt="" loading="lazy" />` : `<span class="cat-img-empty">📦</span>`}
       </div>
       <div class="cat-info">
         <div class="cat-cat">${escapeHtml(p.categoria || 'Otros')}</div>
         <div class="cat-name">${escapeHtml(p.nombre)}</div>
-        <div class="cat-price">${money(p.precioVenta)}</div>
+        <div class="cat-price">
+          ${oferta ? `<span class="cat-price-antes">${money(p.precioAnterior)}</span>` : ''}
+          <span class="${oferta ? 'cat-price-oferta' : ''}">${money(p.precioVenta)}</span>
+        </div>
         ${agotado ? '<span class="badge badge-red" style="margin-top:6px">Agotado</span>' : ''}
       </div>
       <div class="tienda-card-actions" data-frenar-click="1">
@@ -196,14 +268,20 @@ function mostrarDetalleProducto(p) {
   if (!p) return;
   const cant = cantidadEnCarrito(p.id);
   const agotado = p.stock <= 0;
+  const oferta = tieneOferta(p);
+  const pctOferta = oferta ? Math.round((1 - p.precioVenta / p.precioAnterior) * 100) : 0;
   showModal(`
     <div class="cat-img-wrap" style="border-radius:12px; aspect-ratio:1.3">
+      ${oferta ? `<span class="cat-badge-oferta">-${pctOferta}%</span>` : ''}
       ${p.imagen ? `<img src="${p.imagen}" alt="" />` : `<span class="cat-img-empty" style="font-size:48px">📦</span>`}
     </div>
     <div class="cat-cat" style="margin-top:14px">${escapeHtml(p.categoria || 'Otros')}</div>
     <h2 style="margin:4px 0">${escapeHtml(p.nombre)}</h2>
     ${p.descripcion ? `<p class="text-dim" style="font-size:13.5px">${escapeHtml(p.descripcion)}</p>` : ''}
-    <div class="cat-price" style="font-size:24px; margin-top:8px">${money(p.precioVenta)}</div>
+    <div class="cat-price" style="font-size:24px; margin-top:8px">
+      ${oferta ? `<span class="cat-price-antes" style="font-size:15px">${money(p.precioAnterior)}</span>` : ''}
+      <span class="${oferta ? 'cat-price-oferta' : ''}">${money(p.precioVenta)}</span>
+    </div>
     ${agotado ? '<span class="badge badge-red" style="margin-top:6px">Agotado</span>' : '<span class="badge badge-green" style="margin-top:6px">Disponible</span>'}
     ${agotado ? '' : `
       <div style="margin-top:14px">
@@ -325,7 +403,8 @@ function mostrarCarritoModal() {
   document.querySelectorAll('[data-restar-modal]').forEach((btn) => btn.addEventListener('click', () => { cambiarCantidad(btn.dataset.restarModal, -1); mostrarCarritoModal(); }));
   document.getElementById('btn-comprar-whatsapp').addEventListener('click', () => {
     const lineas = carrito.map((i) => `- ${i.cantidad}x ${i.nombre} (${money(i.precioVenta)} c/u) = ${money(i.precioVenta * i.cantidad)}`);
-    const mensaje = `Hola! Quiero hacer este pedido:\n${lineas.join('\n')}\n\nTotal: ${money(totalCarrito())}`;
+    let mensaje = `Hola! Quiero hacer este pedido:\n${lineas.join('\n')}\n\nTotal: ${money(totalCarrito())}`;
+    if (codigoDescuento) mensaje += `\n\nMi codigo de descuento: ${codigoDescuento.codigo} (${codigoDescuento.porcentaje}% OFF)`;
     window.open(buildWhatsappLink(WHATSAPP_TIENDA, mensaje), '_blank');
   });
 }

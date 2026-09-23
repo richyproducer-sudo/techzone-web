@@ -1,3 +1,19 @@
+/* ---- Banner del codigo de descuento (uno por visitante) ---- */
+.codigo-descuento-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(46,204,113,0.15), rgba(47,139,255,0.12));
+  border: 1px dashed var(--green);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.codigo-descuento-icono { font-size: 26px; flex: none; }
+.codigo-descuento-texto { flex: 1; min-width: 0; font-size: 12px; color: var(--text-dim); }
+.codigo-descuento-valor { font-size: 17px; font-weight: 800; color: var(--green); letter-spacing: 1px; font-family: monospace; }
+.codigo-descuento-copiar { flex: none; }
+
 /* ---- Header tipo tienda (logo, iconos, buscador) ---- */
 .shop-header {
   position: sticky;
