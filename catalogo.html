@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Catalogo</title>
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="catalogo.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-brand" id="catalogo-nombre"><span class="tz-tech">Tech</span><span class="tz-zone">Zone</span></div>
+    <button class="btn btn-sm btn-primary" id="btn-contactar" hidden>📱 Contactanos</button>
+  </header>
+  <div class="cat-eslogan text-dim" id="catalogo-eslogan"></div>
+
+  <main class="content">
+    <input type="text" id="catalogo-buscar" placeholder="Buscar producto..." style="width:100%; margin-bottom:10px" />
+    <div class="cat-chips" id="catalogo-categorias"></div>
+    <div id="catalogo-grid"><div class="empty-state">Cargando catalogo...</div></div>
+  </main>
+
+  <script src="firebase-config.js"></script>
+  <script type="module" src="catalogo.js"></script>
+</body>
+</html>
