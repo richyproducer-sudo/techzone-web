@@ -4,24 +4,30 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 <title>Catalogo</title>
+<link rel="icon" type="image/png" href="logo.png" />
 <link rel="stylesheet" href="styles.css" />
 <link rel="stylesheet" href="catalogo.css" />
+<link rel="stylesheet" href="tienda.css" />
 </head>
 <body>
   <header class="app-header">
     <div class="app-header-brand" id="catalogo-nombre"><span class="tz-tech">Tech</span><span class="tz-zone">Zone</span></div>
     <div style="display:flex; gap:8px">
-      <a class="btn btn-sm" href="tienda.html" style="text-decoration:none">🛒 Comprar</a>
+      <button class="shop-icon-btn" id="btn-carrito-header" title="Ver pedido">🛒<span class="shop-cart-badge" id="carrito-badge" hidden>0</span></button>
       <button class="btn btn-sm btn-primary" id="btn-contactar" hidden>📱 Contactanos</button>
     </div>
   </header>
   <div class="cat-eslogan text-dim" id="catalogo-eslogan"></div>
 
-  <main class="content">
+  <main class="content" style="padding-bottom:90px">
     <input type="text" id="catalogo-buscar" placeholder="Buscar producto..." style="width:100%; margin-bottom:10px" />
     <div class="cat-chips" id="catalogo-categorias"></div>
     <div id="catalogo-grid"><div class="empty-state">Cargando catalogo...</div></div>
   </main>
+
+  <div id="carrito-flotante" class="carrito-flotante" hidden>
+    <button class="btn btn-primary btn-block" id="btn-ver-carrito">🛒 Ver pedido</button>
+  </div>
 
   <div id="modal-root"></div>
 

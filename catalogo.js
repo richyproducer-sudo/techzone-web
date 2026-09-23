@@ -1,6 +1,8 @@
 // Catalogo publico de productos: pagina sin login que lee la coleccion
 // "catalogo" de Firestore (publicada desde la app de escritorio, ver
-// Catalogo en el menu). Cualquiera con el link puede verla.
+// Catalogo en el menu). Cualquiera con el link puede verla. Comparte el
+// carrito (localStorage) con tienda.js, asi que agregar productos aqui o
+// alla es lo mismo pedido.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
@@ -16,9 +18,10 @@ function buildWhatsappLink(celular, mensaje) {
   return `https://wa.me/${digits}?text=${encodeURIComponent(mensaje)}`;
 }
 
-// Numero de WhatsApp para consultas sobre un producto especifico del
-// catalogo (fijo, no depende de la config de la tienda).
+// Numero de WhatsApp para consultas y para comprar el pedido (fijo, no
+// depende de la config de la tienda).
 const WHATSAPP_PRODUCTO = '3135639329';
+const CARRITO_KEY = 'tz_carrito';
 
 function showModal(html) {
   const root = document.getElementById('modal-root');
@@ -38,6 +41,24 @@ const db = getFirestore(firebaseApp);
 let productos = [];
 let meta = {};
 let categoriaActiva = 'Todos';
+let carrito = cargarCarritoGuardado();
+
+function cargarCarritoGuardado() {
+  try {
+    const guardado = localStorage.getItem(CARRITO_KEY);
+    return guardado ? JSON.parse(guardado) : [];
+  } catch (err) {
+    return [];
+  }
+}
+function guardarCarrito() {
+  try {
+    localStorage.setItem(CARRITO_KEY, JSON.stringify(carrito));
+  } catch (err) {
+    // Almacenamiento no disponible (privado/bloqueado): el carrito sigue
+    // funcionando en memoria durante esta visita, solo no se recuerda.
+  }
+}
 
 async function cargar() {
   const grid = document.getElementById('catalogo-grid');
@@ -72,10 +93,17 @@ async function cargar() {
     return;
   }
 
+  // Si algo del carrito guardado ya no existe (o se agoto), se limpia.
+  carrito = carrito.filter((item) => productos.some((p) => p.id === item.id && p.stock > 0));
+  guardarCarrito();
+
   pintarCategorias();
   pintarGrid();
+  actualizarBotonFlotante();
 
   document.getElementById('catalogo-buscar').addEventListener('input', pintarGrid);
+  document.getElementById('btn-ver-carrito').addEventListener('click', mostrarCarritoModal);
+  document.getElementById('btn-carrito-header').addEventListener('click', mostrarCarritoModal);
 }
 
 function pintarCategorias() {
@@ -87,6 +115,11 @@ function pintarCategorias() {
     pintarCategorias();
     pintarGrid();
   }));
+}
+
+function cantidadEnCarrito(id) {
+  const item = carrito.find((i) => i.id === id);
+  return item ? item.cantidad : 0;
 }
 
 function pintarGrid() {
@@ -102,7 +135,10 @@ function pintarGrid() {
     return;
   }
 
-  grid.innerHTML = `<div class="cat-grid">${filtrados.map((p) => `
+  grid.innerHTML = `<div class="cat-grid">${filtrados.map((p) => {
+    const cant = cantidadEnCarrito(p.id);
+    const agotado = p.stock <= 0;
+    return `
     <div class="cat-card" data-producto="${escapeHtml(p.id)}">
       <div class="cat-img-wrap">
         ${p.imagen ? `<img src="${p.imagen}" alt="" loading="lazy" />` : `<span class="cat-img-empty">📦</span>`}
@@ -111,18 +147,129 @@ function pintarGrid() {
         <div class="cat-cat">${escapeHtml(p.categoria || 'Otros')}</div>
         <div class="cat-name">${escapeHtml(p.nombre)}</div>
         <div class="cat-price">${money(p.precioVenta)}</div>
-        ${p.stock <= 0 ? '<span class="badge badge-red" style="margin-top:6px">Agotado</span>' : ''}
+        ${agotado ? '<span class="badge badge-red" style="margin-top:6px">Agotado</span>' : ''}
+      </div>
+      <div class="tienda-card-actions" data-frenar-click="1">
+        ${agotado ? '' : cant > 0 ? `
+          <div class="tienda-qty">
+            <button data-restar="${escapeHtml(p.id)}">-</button>
+            <span>${cant}</span>
+            <button data-sumar="${escapeHtml(p.id)}" ${cant >= p.stock ? 'disabled' : ''}>+</button>
+          </div>
+        ` : `<button class="btn btn-sm btn-primary" style="width:100%" data-agregar="${escapeHtml(p.id)}">+ Agregar</button>`}
       </div>
     </div>
-  `).join('')}</div>`;
+  `;
+  }).join('')}</div>`;
 
   grid.querySelectorAll('[data-producto]').forEach((card) => {
     card.addEventListener('click', () => mostrarDetalleProducto(filtrados.find((p) => p.id === card.dataset.producto)));
+  });
+  // El area de agregar/cantidad esta dentro de la tarjeta, pero no debe abrir
+  // el detalle del producto al tocarla.
+  grid.querySelectorAll('[data-frenar-click]').forEach((el) => el.addEventListener('click', (e) => e.stopPropagation()));
+  grid.querySelectorAll('[data-agregar]').forEach((btn) => btn.addEventListener('click', () => cambiarCantidad(btn.dataset.agregar, 1)));
+  grid.querySelectorAll('[data-sumar]').forEach((btn) => btn.addEventListener('click', () => cambiarCantidad(btn.dataset.sumar, 1)));
+  grid.querySelectorAll('[data-restar]').forEach((btn) => btn.addEventListener('click', () => cambiarCantidad(btn.dataset.restar, -1)));
+}
+
+function cambiarCantidad(id, delta) {
+  const producto = productos.find((p) => p.id === id);
+  if (!producto) return;
+  let item = carrito.find((i) => i.id === id);
+  if (!item) {
+    if (delta <= 0) return;
+    item = { id, nombre: producto.nombre, precioVenta: producto.precioVenta, imagen: producto.imagen || null, cantidad: 0 };
+    carrito.push(item);
+  }
+  item.cantidad = Math.max(0, Math.min(producto.stock, item.cantidad + delta));
+  if (item.cantidad === 0) carrito = carrito.filter((i) => i.id !== id);
+  guardarCarrito();
+  pintarGrid();
+  actualizarBotonFlotante();
+}
+
+function totalCarrito() {
+  return carrito.reduce((s, i) => s + i.precioVenta * i.cantidad, 0);
+}
+function cantidadTotalCarrito() {
+  return carrito.reduce((s, i) => s + i.cantidad, 0);
+}
+
+function actualizarBotonFlotante() {
+  const cont = document.getElementById('carrito-flotante');
+  const btn = document.getElementById('btn-ver-carrito');
+  const badge = document.getElementById('carrito-badge');
+  const n = cantidadTotalCarrito();
+
+  badge.hidden = n === 0;
+  badge.textContent = n;
+
+  if (n === 0) {
+    cont.hidden = true;
+    return;
+  }
+  cont.hidden = false;
+  btn.textContent = `🛒 Ver pedido (${n}) · ${money(totalCarrito())}`;
+}
+
+function mostrarCarritoModal() {
+  if (!carrito.length) {
+    showModal(`
+      <h2>Tu pedido</h2>
+      <div class="empty-state">Aun no has agregado productos.</div>
+      <div class="modal-actions"><button class="btn btn-sm" id="btn-cerrar-carrito">Cerrar</button></div>
+    `);
+    document.getElementById('btn-cerrar-carrito').addEventListener('click', closeModal);
+    return;
+  }
+
+  showModal(`
+    <h2>Tu pedido</h2>
+    ${carrito.map((i) => `
+      <div class="carrito-item">
+        <div class="carrito-item-img">${i.imagen ? `<img src="${i.imagen}" alt="" />` : '📦'}</div>
+        <div class="carrito-item-info">
+          <div class="carrito-item-nombre">${escapeHtml(i.nombre)}</div>
+          <div class="carrito-item-precio">${money(i.precioVenta)} c/u</div>
+        </div>
+        <div class="tienda-qty">
+          <button data-restar-modal="${escapeHtml(i.id)}">-</button>
+          <span>${i.cantidad}</span>
+          <button data-sumar-modal="${escapeHtml(i.id)}">+</button>
+        </div>
+      </div>
+    `).join('')}
+    <div class="carrito-total-row"><span>Total</span><span>${money(totalCarrito())}</span></div>
+    <div class="modal-actions">
+      <button class="btn btn-sm" id="btn-vaciar-carrito">Vaciar</button>
+      <button class="btn btn-sm" id="btn-cerrar-carrito">Seguir viendo</button>
+      <button class="btn btn-primary" id="btn-comprar-whatsapp">📱 Comprar por WhatsApp</button>
+    </div>
+  `);
+
+  document.getElementById('btn-cerrar-carrito').addEventListener('click', closeModal);
+  document.getElementById('btn-vaciar-carrito').addEventListener('click', () => {
+    if (!confirm('¿Vaciar todo el pedido?')) return;
+    carrito = [];
+    guardarCarrito();
+    closeModal();
+    pintarGrid();
+    actualizarBotonFlotante();
+  });
+  document.querySelectorAll('[data-sumar-modal]').forEach((btn) => btn.addEventListener('click', () => { cambiarCantidad(btn.dataset.sumarModal, 1); mostrarCarritoModal(); }));
+  document.querySelectorAll('[data-restar-modal]').forEach((btn) => btn.addEventListener('click', () => { cambiarCantidad(btn.dataset.restarModal, -1); mostrarCarritoModal(); }));
+  document.getElementById('btn-comprar-whatsapp').addEventListener('click', () => {
+    const lineas = carrito.map((i) => `- ${i.cantidad}x ${i.nombre} (${money(i.precioVenta)} c/u) = ${money(i.precioVenta * i.cantidad)}`);
+    const mensaje = `Hola! Quiero hacer este pedido:\n${lineas.join('\n')}\n\nTotal: ${money(totalCarrito())}`;
+    window.open(buildWhatsappLink(WHATSAPP_PRODUCTO, mensaje), '_blank');
   });
 }
 
 function mostrarDetalleProducto(p) {
   if (!p) return;
+  const cant = cantidadEnCarrito(p.id);
+  const agotado = p.stock <= 0;
   showModal(`
     <div class="cat-img-wrap" style="border-radius:12px; aspect-ratio:1.3">
       ${p.imagen ? `<img src="${p.imagen}" alt="" />` : `<span class="cat-img-empty" style="font-size:48px">📦</span>`}
@@ -131,7 +278,18 @@ function mostrarDetalleProducto(p) {
     <h2 style="margin:4px 0">${escapeHtml(p.nombre)}</h2>
     ${p.descripcion ? `<p class="text-dim" style="font-size:13.5px">${escapeHtml(p.descripcion)}</p>` : ''}
     <div class="cat-price" style="font-size:24px; margin-top:8px">${money(p.precioVenta)}</div>
-    ${p.stock <= 0 ? '<span class="badge badge-red" style="margin-top:6px">Agotado</span>' : '<span class="badge badge-green" style="margin-top:6px">Disponible</span>'}
+    ${agotado ? '<span class="badge badge-red" style="margin-top:6px">Agotado</span>' : '<span class="badge badge-green" style="margin-top:6px">Disponible</span>'}
+    ${agotado ? '' : `
+      <div style="margin-top:14px">
+        ${cant > 0 ? `
+          <div class="tienda-qty" style="max-width:160px">
+            <button data-restar-detalle="${escapeHtml(p.id)}">-</button>
+            <span>${cant}</span>
+            <button data-sumar-detalle="${escapeHtml(p.id)}" ${cant >= p.stock ? 'disabled' : ''}>+</button>
+          </div>
+        ` : `<button class="btn btn-primary btn-block" data-agregar-detalle="${escapeHtml(p.id)}">+ Agregar al pedido</button>`}
+      </div>
+    `}
     <div class="modal-actions">
       <button class="btn btn-sm" id="btn-cerrar-detalle">Cerrar</button>
       <button class="btn btn-primary" id="btn-contactar-producto">📱 Contactanos</button>
@@ -142,6 +300,12 @@ function mostrarDetalleProducto(p) {
     const mensaje = `Hola! Quiero mas informacion sobre "${p.nombre}" del catalogo.`;
     window.open(buildWhatsappLink(WHATSAPP_PRODUCTO, mensaje), '_blank');
   });
+  const btnAgregar = document.querySelector('[data-agregar-detalle]');
+  if (btnAgregar) btnAgregar.addEventListener('click', () => { cambiarCantidad(p.id, 1); mostrarDetalleProducto(p); });
+  const btnSumar = document.querySelector('[data-sumar-detalle]');
+  if (btnSumar) btnSumar.addEventListener('click', () => { cambiarCantidad(p.id, 1); mostrarDetalleProducto(p); });
+  const btnRestar = document.querySelector('[data-restar-detalle]');
+  if (btnRestar) btnRestar.addEventListener('click', () => { cambiarCantidad(p.id, -1); mostrarDetalleProducto(p); });
 }
 
 cargar();
