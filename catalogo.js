@@ -16,6 +16,21 @@ function buildWhatsappLink(celular, mensaje) {
   return `https://wa.me/${digits}?text=${encodeURIComponent(mensaje)}`;
 }
 
+// Numero de WhatsApp para consultas sobre un producto especifico del
+// catalogo (fijo, no depende de la config de la tienda).
+const WHATSAPP_PRODUCTO = '3135639329';
+
+function showModal(html) {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `<div class="modal-overlay" id="modal-overlay"><div class="modal">${html}</div></div>`;
+  document.getElementById('modal-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-overlay') closeModal();
+  });
+}
+function closeModal() {
+  document.getElementById('modal-root').innerHTML = '';
+}
+
 const firebaseConfig = window.TECHZONE_FIREBASE_CONFIG || {};
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
@@ -88,7 +103,7 @@ function pintarGrid() {
   }
 
   grid.innerHTML = `<div class="cat-grid">${filtrados.map((p) => `
-    <div class="cat-card">
+    <div class="cat-card" data-producto="${escapeHtml(p.id)}">
       <div class="cat-img-wrap">
         ${p.imagen ? `<img src="${p.imagen}" alt="" loading="lazy" />` : `<span class="cat-img-empty">📦</span>`}
       </div>
@@ -100,6 +115,33 @@ function pintarGrid() {
       </div>
     </div>
   `).join('')}</div>`;
+
+  grid.querySelectorAll('[data-producto]').forEach((card) => {
+    card.addEventListener('click', () => mostrarDetalleProducto(filtrados.find((p) => p.id === card.dataset.producto)));
+  });
+}
+
+function mostrarDetalleProducto(p) {
+  if (!p) return;
+  showModal(`
+    <div class="cat-img-wrap" style="border-radius:12px; aspect-ratio:1.3">
+      ${p.imagen ? `<img src="${p.imagen}" alt="" />` : `<span class="cat-img-empty" style="font-size:48px">📦</span>`}
+    </div>
+    <div class="cat-cat" style="margin-top:14px">${escapeHtml(p.categoria || 'Otros')}</div>
+    <h2 style="margin:4px 0">${escapeHtml(p.nombre)}</h2>
+    ${p.descripcion ? `<p class="text-dim" style="font-size:13.5px">${escapeHtml(p.descripcion)}</p>` : ''}
+    <div class="cat-price" style="font-size:24px; margin-top:8px">${money(p.precioVenta)}</div>
+    ${p.stock <= 0 ? '<span class="badge badge-red" style="margin-top:6px">Agotado</span>' : '<span class="badge badge-green" style="margin-top:6px">Disponible</span>'}
+    <div class="modal-actions">
+      <button class="btn btn-sm" id="btn-cerrar-detalle">Cerrar</button>
+      <button class="btn btn-primary" id="btn-contactar-producto">📱 Contactanos</button>
+    </div>
+  `);
+  document.getElementById('btn-cerrar-detalle').addEventListener('click', closeModal);
+  document.getElementById('btn-contactar-producto').addEventListener('click', () => {
+    const mensaje = `Hola! Quiero mas informacion sobre "${p.nombre}" del catalogo.`;
+    window.open(buildWhatsappLink(WHATSAPP_PRODUCTO, mensaje), '_blank');
+  });
 }
 
 cargar();

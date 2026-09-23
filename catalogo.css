@@ -13,7 +13,7 @@
 }
 .cat-chip.active { background: var(--blue); border-color: var(--blue); color: #fff; }
 .cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.cat-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.cat-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; }
 .cat-img-wrap { width: 100%; aspect-ratio: 1; background: var(--bg-panel-2); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .cat-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
 .cat-img-empty { font-size: 32px; opacity: 0.5; }
