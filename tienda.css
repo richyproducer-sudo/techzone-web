@@ -8,7 +8,7 @@
   padding: 12px 14px;
 }
 .shop-header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.shop-logo { font-size: 19px; }
+.shop-logo { font-size: 19px; display: flex; align-items: center; gap: 8px; }
 .shop-header-actions { display: flex; gap: 8px; }
 .shop-icon-btn {
   position: relative;
@@ -92,7 +92,8 @@
 
 /* ---- Footer ---- */
 .shop-footer { text-align: center; padding: 30px 16px 16px; border-top: 1px solid var(--border); margin-top: 20px; }
-.shop-footer-brand { font-size: 17px; margin-bottom: 6px; }
+.shop-footer-brand { font-size: 17px; margin-bottom: 6px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.shop-footer-brand .brand-logo-img { width: 26px; height: 26px; }
 
 .carrito-flotante {
   position: fixed;
@@ -106,27 +107,43 @@
 .carrito-flotante[hidden] { display: none; }
 
 .tienda-card-actions { padding: 0 10px 10px; }
-.tienda-qty { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.tienda-qty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  background: var(--bg-panel-2);
+  border-radius: 10px;
+  padding: 3px;
+}
 .tienda-qty button {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg-panel-2);
+  border: none;
+  background: var(--bg-panel);
   color: var(--text);
-  font-size: 16px;
+  font-size: 17px;
+  font-weight: 700;
   cursor: pointer;
 }
-.tienda-qty span { font-weight: 700; min-width: 20px; text-align: center; }
+.tienda-qty button:hover { background: var(--blue); color: #fff; }
+.tienda-qty button:disabled { opacity: 0.35; cursor: not-allowed; background: var(--bg-panel); color: var(--text); }
+.tienda-qty span { font-weight: 800; min-width: 24px; text-align: center; font-size: 14px; }
 
-.carrito-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+/* ---- Carrito: encabezado, lista con scroll propio y renglones mas claros ---- */
+.carrito-header { display: flex; align-items: center; gap: 8px; font-size: 19px; font-weight: 800; margin-bottom: 4px; }
+.carrito-header-count { margin-left: auto; font-size: 11.5px; font-weight: 600; color: var(--text-dim); background: var(--bg-panel-2); padding: 4px 10px; border-radius: 20px; }
+.carrito-lista { max-height: 46vh; overflow-y: auto; margin: 10px -4px 0; padding: 0 4px; }
+.carrito-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
 .carrito-item:last-child { border-bottom: none; }
-.carrito-item-img { width: 48px; height: 48px; border-radius: 8px; background: var(--bg-panel-2); overflow: hidden; flex: none; display: flex; align-items: center; justify-content: center; }
+.carrito-item-img { width: 60px; height: 60px; border-radius: 10px; background: var(--bg-panel-2); overflow: hidden; flex: none; display: flex; align-items: center; justify-content: center; font-size: 22px; }
 .carrito-item-img img { width: 100%; height: 100%; object-fit: cover; }
 .carrito-item-info { flex: 1; min-width: 0; }
-.carrito-item-nombre { font-size: 13px; font-weight: 600; }
-.carrito-item-precio { font-size: 12px; color: var(--text-dim); }
-.carrito-total-row { display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 800; padding-top: 12px; margin-top: 6px; border-top: 1px solid var(--border); }
+.carrito-item-nombre { font-size: 13.5px; font-weight: 700; line-height: 1.3; }
+.carrito-item-precio { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+.carrito-item-subtotal { font-size: 13px; font-weight: 800; color: var(--blue-glow); margin-top: 3px; }
+.carrito-total-row { display: flex; justify-content: space-between; align-items: center; font-size: 18px; font-weight: 800; padding-top: 14px; margin-top: 10px; border-top: 1px dashed var(--border); }
 
 /* ---- Pantallas grandes (tablet/PC): la barra de arriba, el banner y las
    categorias dejan de verse como una columna angosta y usan el ancho real

@@ -74,6 +74,7 @@ async function cargar() {
 
   if (meta.nombreTienda) {
     document.getElementById('tienda-nombre').textContent = meta.nombreTienda;
+    document.getElementById('tienda-footer-nombre').textContent = meta.nombreTienda;
     document.title = 'Tienda - ' + meta.nombreTienda;
   }
   if (meta.eslogan) document.getElementById('tienda-eslogan').textContent = meta.eslogan;
@@ -159,7 +160,7 @@ function pintarGrid() {
     const cant = cantidadEnCarrito(p.id);
     const agotado = p.stock <= 0;
     return `
-    <div class="cat-card" style="cursor:default">
+    <div class="cat-card" data-producto="${escapeHtml(p.id)}">
       <div class="cat-img-wrap">
         ${p.imagen ? `<img src="${p.imagen}" alt="" loading="lazy" />` : `<span class="cat-img-empty">📦</span>`}
       </div>
@@ -169,7 +170,7 @@ function pintarGrid() {
         <div class="cat-price">${money(p.precioVenta)}</div>
         ${agotado ? '<span class="badge badge-red" style="margin-top:6px">Agotado</span>' : ''}
       </div>
-      <div class="tienda-card-actions">
+      <div class="tienda-card-actions" data-frenar-click="1">
         ${agotado ? '' : cant > 0 ? `
           <div class="tienda-qty">
             <button data-restar="${escapeHtml(p.id)}">-</button>
@@ -182,9 +183,55 @@ function pintarGrid() {
   `;
   }).join('')}</div>`;
 
+  grid.querySelectorAll('[data-producto]').forEach((card) => {
+    card.addEventListener('click', () => mostrarDetalleProducto(filtrados.find((p) => p.id === card.dataset.producto)));
+  });
+  grid.querySelectorAll('[data-frenar-click]').forEach((el) => el.addEventListener('click', (e) => e.stopPropagation()));
   grid.querySelectorAll('[data-agregar]').forEach((btn) => btn.addEventListener('click', () => cambiarCantidad(btn.dataset.agregar, 1)));
   grid.querySelectorAll('[data-sumar]').forEach((btn) => btn.addEventListener('click', () => cambiarCantidad(btn.dataset.sumar, 1)));
   grid.querySelectorAll('[data-restar]').forEach((btn) => btn.addEventListener('click', () => cambiarCantidad(btn.dataset.restar, -1)));
+}
+
+function mostrarDetalleProducto(p) {
+  if (!p) return;
+  const cant = cantidadEnCarrito(p.id);
+  const agotado = p.stock <= 0;
+  showModal(`
+    <div class="cat-img-wrap" style="border-radius:12px; aspect-ratio:1.3">
+      ${p.imagen ? `<img src="${p.imagen}" alt="" />` : `<span class="cat-img-empty" style="font-size:48px">📦</span>`}
+    </div>
+    <div class="cat-cat" style="margin-top:14px">${escapeHtml(p.categoria || 'Otros')}</div>
+    <h2 style="margin:4px 0">${escapeHtml(p.nombre)}</h2>
+    ${p.descripcion ? `<p class="text-dim" style="font-size:13.5px">${escapeHtml(p.descripcion)}</p>` : ''}
+    <div class="cat-price" style="font-size:24px; margin-top:8px">${money(p.precioVenta)}</div>
+    ${agotado ? '<span class="badge badge-red" style="margin-top:6px">Agotado</span>' : '<span class="badge badge-green" style="margin-top:6px">Disponible</span>'}
+    ${agotado ? '' : `
+      <div style="margin-top:14px">
+        ${cant > 0 ? `
+          <div class="tienda-qty" style="max-width:160px">
+            <button data-restar-detalle="${escapeHtml(p.id)}">-</button>
+            <span>${cant}</span>
+            <button data-sumar-detalle="${escapeHtml(p.id)}" ${cant >= p.stock ? 'disabled' : ''}>+</button>
+          </div>
+        ` : `<button class="btn btn-primary btn-block" data-agregar-detalle="${escapeHtml(p.id)}">+ Agregar al pedido</button>`}
+      </div>
+    `}
+    <div class="modal-actions">
+      <button class="btn btn-sm" id="btn-cerrar-detalle">Cerrar</button>
+      <button class="btn btn-primary" id="btn-contactar-producto">📱 Contactanos</button>
+    </div>
+  `);
+  document.getElementById('btn-cerrar-detalle').addEventListener('click', closeModal);
+  document.getElementById('btn-contactar-producto').addEventListener('click', () => {
+    const mensaje = `Hola! Quiero mas informacion sobre "${p.nombre}".`;
+    window.open(buildWhatsappLink(WHATSAPP_TIENDA, mensaje), '_blank');
+  });
+  const btnAgregar = document.querySelector('[data-agregar-detalle]');
+  if (btnAgregar) btnAgregar.addEventListener('click', () => { cambiarCantidad(p.id, 1); mostrarDetalleProducto(p); });
+  const btnSumar = document.querySelector('[data-sumar-detalle]');
+  if (btnSumar) btnSumar.addEventListener('click', () => { cambiarCantidad(p.id, 1); mostrarDetalleProducto(p); });
+  const btnRestar = document.querySelector('[data-restar-detalle]');
+  if (btnRestar) btnRestar.addEventListener('click', () => { cambiarCantidad(p.id, -1); mostrarDetalleProducto(p); });
 }
 
 function cambiarCantidad(id, delta) {
@@ -201,7 +248,6 @@ function cambiarCantidad(id, delta) {
   guardarCarrito();
   pintarGrid();
   actualizarBotonFlotante();
-  if (document.getElementById('modal-root').innerHTML) mostrarCarritoModal();
 }
 
 function totalCarrito() {
@@ -231,7 +277,7 @@ function actualizarBotonFlotante() {
 function mostrarCarritoModal() {
   if (!carrito.length) {
     showModal(`
-      <h2>Tu pedido</h2>
+      <div class="carrito-header"><span>🛒</span> Tu pedido</div>
       <div class="empty-state">Aun no has agregado productos.</div>
       <div class="modal-actions"><button class="btn btn-sm" id="btn-cerrar-carrito">Cerrar</button></div>
     `);
@@ -240,27 +286,30 @@ function mostrarCarritoModal() {
   }
 
   showModal(`
-    <h2>Tu pedido</h2>
-    ${carrito.map((i) => `
-      <div class="carrito-item">
-        <div class="carrito-item-img">${i.imagen ? `<img src="${i.imagen}" alt="" />` : '📦'}</div>
-        <div class="carrito-item-info">
-          <div class="carrito-item-nombre">${escapeHtml(i.nombre)}</div>
-          <div class="carrito-item-precio">${money(i.precioVenta)} c/u</div>
+    <div class="carrito-header"><span>🛒</span> Tu pedido <span class="carrito-header-count">${cantidadTotalCarrito()} articulo${cantidadTotalCarrito() === 1 ? '' : 's'}</span></div>
+    <div class="carrito-lista">
+      ${carrito.map((i) => `
+        <div class="carrito-item">
+          <div class="carrito-item-img">${i.imagen ? `<img src="${i.imagen}" alt="" />` : '📦'}</div>
+          <div class="carrito-item-info">
+            <div class="carrito-item-nombre">${escapeHtml(i.nombre)}</div>
+            <div class="carrito-item-precio">${money(i.precioVenta)} c/u</div>
+            <div class="carrito-item-subtotal">${money(i.precioVenta * i.cantidad)}</div>
+          </div>
+          <div class="tienda-qty">
+            <button data-restar-modal="${escapeHtml(i.id)}">-</button>
+            <span>${i.cantidad}</span>
+            <button data-sumar-modal="${escapeHtml(i.id)}">+</button>
+          </div>
         </div>
-        <div class="tienda-qty">
-          <button data-restar-modal="${escapeHtml(i.id)}">-</button>
-          <span>${i.cantidad}</span>
-          <button data-sumar-modal="${escapeHtml(i.id)}">+</button>
-        </div>
-      </div>
-    `).join('')}
+      `).join('')}
+    </div>
     <div class="carrito-total-row"><span>Total</span><span>${money(totalCarrito())}</span></div>
     <div class="modal-actions">
       <button class="btn btn-sm" id="btn-vaciar-carrito">Vaciar</button>
       <button class="btn btn-sm" id="btn-cerrar-carrito">Seguir viendo</button>
-      <button class="btn btn-primary" id="btn-comprar-whatsapp">📱 Comprar por WhatsApp</button>
     </div>
+    <button class="btn btn-primary btn-block" id="btn-comprar-whatsapp" style="margin-top:10px">📱 Comprar por WhatsApp</button>
   `);
 
   document.getElementById('btn-cerrar-carrito').addEventListener('click', closeModal);
@@ -272,8 +321,8 @@ function mostrarCarritoModal() {
     pintarGrid();
     actualizarBotonFlotante();
   });
-  document.querySelectorAll('[data-sumar-modal]').forEach((btn) => btn.addEventListener('click', () => cambiarCantidad(btn.dataset.sumarModal, 1)));
-  document.querySelectorAll('[data-restar-modal]').forEach((btn) => btn.addEventListener('click', () => cambiarCantidad(btn.dataset.restarModal, -1)));
+  document.querySelectorAll('[data-sumar-modal]').forEach((btn) => btn.addEventListener('click', () => { cambiarCantidad(btn.dataset.sumarModal, 1); mostrarCarritoModal(); }));
+  document.querySelectorAll('[data-restar-modal]').forEach((btn) => btn.addEventListener('click', () => { cambiarCantidad(btn.dataset.restarModal, -1); mostrarCarritoModal(); }));
   document.getElementById('btn-comprar-whatsapp').addEventListener('click', () => {
     const lineas = carrito.map((i) => `- ${i.cantidad}x ${i.nombre} (${money(i.precioVenta)} c/u) = ${money(i.precioVenta * i.cantidad)}`);
     const mensaje = `Hola! Quiero hacer este pedido:\n${lineas.join('\n')}\n\nTotal: ${money(totalCarrito())}`;

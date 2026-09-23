@@ -216,7 +216,7 @@ function actualizarBotonFlotante() {
 function mostrarCarritoModal() {
   if (!carrito.length) {
     showModal(`
-      <h2>Tu pedido</h2>
+      <div class="carrito-header"><span>🛒</span> Tu pedido</div>
       <div class="empty-state">Aun no has agregado productos.</div>
       <div class="modal-actions"><button class="btn btn-sm" id="btn-cerrar-carrito">Cerrar</button></div>
     `);
@@ -225,27 +225,30 @@ function mostrarCarritoModal() {
   }
 
   showModal(`
-    <h2>Tu pedido</h2>
-    ${carrito.map((i) => `
-      <div class="carrito-item">
-        <div class="carrito-item-img">${i.imagen ? `<img src="${i.imagen}" alt="" />` : '📦'}</div>
-        <div class="carrito-item-info">
-          <div class="carrito-item-nombre">${escapeHtml(i.nombre)}</div>
-          <div class="carrito-item-precio">${money(i.precioVenta)} c/u</div>
+    <div class="carrito-header"><span>🛒</span> Tu pedido <span class="carrito-header-count">${cantidadTotalCarrito()} articulo${cantidadTotalCarrito() === 1 ? '' : 's'}</span></div>
+    <div class="carrito-lista">
+      ${carrito.map((i) => `
+        <div class="carrito-item">
+          <div class="carrito-item-img">${i.imagen ? `<img src="${i.imagen}" alt="" />` : '📦'}</div>
+          <div class="carrito-item-info">
+            <div class="carrito-item-nombre">${escapeHtml(i.nombre)}</div>
+            <div class="carrito-item-precio">${money(i.precioVenta)} c/u</div>
+            <div class="carrito-item-subtotal">${money(i.precioVenta * i.cantidad)}</div>
+          </div>
+          <div class="tienda-qty">
+            <button data-restar-modal="${escapeHtml(i.id)}">-</button>
+            <span>${i.cantidad}</span>
+            <button data-sumar-modal="${escapeHtml(i.id)}">+</button>
+          </div>
         </div>
-        <div class="tienda-qty">
-          <button data-restar-modal="${escapeHtml(i.id)}">-</button>
-          <span>${i.cantidad}</span>
-          <button data-sumar-modal="${escapeHtml(i.id)}">+</button>
-        </div>
-      </div>
-    `).join('')}
+      `).join('')}
+    </div>
     <div class="carrito-total-row"><span>Total</span><span>${money(totalCarrito())}</span></div>
     <div class="modal-actions">
       <button class="btn btn-sm" id="btn-vaciar-carrito">Vaciar</button>
       <button class="btn btn-sm" id="btn-cerrar-carrito">Seguir viendo</button>
-      <button class="btn btn-primary" id="btn-comprar-whatsapp">📱 Comprar por WhatsApp</button>
     </div>
+    <button class="btn btn-primary btn-block" id="btn-comprar-whatsapp" style="margin-top:10px">📱 Comprar por WhatsApp</button>
   `);
 
   document.getElementById('btn-cerrar-carrito').addEventListener('click', closeModal);

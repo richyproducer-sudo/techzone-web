@@ -22,6 +22,11 @@
 .cat-cat { font-size: 10.5px; color: var(--text-dim); margin-bottom: 4px; }
 .cat-price { font-size: 14.5px; font-weight: 800; color: var(--blue-glow); }
 
+/* ---- Logo de la tienda en el header/footer (favicon.html usa el mismo
+   archivo logo.png) ---- */
+.app-header-brand { display: flex; align-items: center; gap: 8px; }
+.brand-logo-img { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; flex: none; }
+
 /* ---- Pantallas grandes (tablet/PC): mismo diseño, mas columnas y menos
    espacio desperdiciado a los lados en vez de una columna angosta. ---- */
 @media (min-width: 640px) {
