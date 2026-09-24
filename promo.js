@@ -25,6 +25,19 @@ const firebaseConfig = window.TECHZONE_FIREBASE_CONFIG || {};
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 
+// Revisa en Firestore que el codigo no exista ya (de otro visitante, de un
+// cupon manual o del Catalogo/Tienda, que comparten la misma coleccion) antes
+// de asignarlo, reintentando con uno nuevo en el caso extremadamente
+// improbable de que coincida con uno existente.
+async function generarCodigoUnico() {
+  for (let intento = 0; intento < 5; intento++) {
+    const codigo = generarCodigoAleatorio();
+    const snap = await getDoc(doc(db, 'descuentos', codigo));
+    if (!snap.exists()) return codigo;
+  }
+  return generarCodigoAleatorio() + '-' + Date.now().toString(36).slice(-4).toUpperCase();
+}
+
 async function obtenerOCrearCodigoPromo() {
   try {
     const guardado = localStorage.getItem(CODIGO_KEY);
@@ -40,7 +53,7 @@ async function obtenerOCrearCodigoPromo() {
   }
 
   const registro = {
-    codigo: generarCodigoAleatorio(),
+    codigo: await generarCodigoUnico(),
     porcentaje: PROMO_PORCENTAJE,
     montoMinimo: PROMO_MONTO_MINIMO,
     creadoEn: new Date().toISOString(),

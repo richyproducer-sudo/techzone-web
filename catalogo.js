@@ -4,7 +4,7 @@
 // carrito (localStorage) con tienda.js, asi que agregar productos aqui o
 // alla es lo mismo pedido.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-import { getFirestore, collection, getDocs, doc, setDoc } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 function money(n) {
   return '$ ' + Math.round(n || 0).toLocaleString('es-CO');
@@ -34,6 +34,18 @@ function generarCodigoAleatorio() {
   for (let i = 0; i < 6; i++) codigo += chars[Math.floor(Math.random() * chars.length)];
   return codigo;
 }
+// Revisa en Firestore que el codigo no exista ya (de otro visitante, de un
+// cupon manual o de la promo del QR, que comparten la misma coleccion) antes
+// de asignarlo, reintentando con uno nuevo en el caso extremadamente
+// improbable de que coincida con uno existente.
+async function generarCodigoUnico() {
+  for (let intento = 0; intento < 5; intento++) {
+    const codigo = generarCodigoAleatorio();
+    const snap = await getDoc(doc(db, 'descuentos', codigo));
+    if (!snap.exists()) return codigo;
+  }
+  return generarCodigoAleatorio() + '-' + Date.now().toString(36).slice(-4).toUpperCase();
+}
 async function obtenerOCrearCodigoDescuento(porcentaje) {
   try {
     const guardado = localStorage.getItem(CODIGO_KEY);
@@ -43,7 +55,7 @@ async function obtenerOCrearCodigoDescuento(porcentaje) {
   }
   if (!porcentaje) return null;
 
-  const registro = { codigo: generarCodigoAleatorio(), porcentaje, creadoEn: new Date().toISOString(), usado: false };
+  const registro = { codigo: await generarCodigoUnico(), porcentaje, creadoEn: new Date().toISOString(), usado: false };
   try {
     await setDoc(doc(db, 'descuentos', registro.codigo), registro);
   } catch (err) {
