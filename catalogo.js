@@ -167,7 +167,14 @@ function pintarBannerDescuento() {
 }
 
 function tieneOferta(p) {
-  return p.precioAnterior && p.precioAnterior > p.precioVenta;
+  return p.descuentoPorcentaje > 0;
+}
+// El precio "antes" tachado se calcula a partir del % de descuento y el
+// precio de venta actual (que sigue siendo el precio real que se cobra).
+function precioAntesDeOferta(p) {
+  const pct = Number(p.descuentoPorcentaje) || 0;
+  if (pct <= 0 || pct >= 100) return p.precioVenta;
+  return Math.round(p.precioVenta / (1 - pct / 100));
 }
 
 function pintarCategorias() {
@@ -204,7 +211,7 @@ function pintarGrid() {
     const cant = cantidadEnCarrito(p.id);
     const agotado = p.stock <= 0;
     const oferta = tieneOferta(p);
-    const pctOferta = oferta ? Math.round((1 - p.precioVenta / p.precioAnterior) * 100) : 0;
+    const pctOferta = oferta ? p.descuentoPorcentaje : 0;
     return `
     <div class="cat-card" data-producto="${escapeHtml(p.id)}">
       <div class="cat-img-wrap">
@@ -215,7 +222,7 @@ function pintarGrid() {
         <div class="cat-cat">${escapeHtml(p.categoria || 'Otros')}</div>
         <div class="cat-name">${escapeHtml(p.nombre)}</div>
         <div class="cat-price">
-          ${oferta ? `<span class="cat-price-antes">${money(p.precioAnterior)}</span>` : ''}
+          ${oferta ? `<span class="cat-price-antes">${money(precioAntesDeOferta(p))}</span>` : ''}
           <span class="${oferta ? 'cat-price-oferta' : ''}">${money(p.precioVenta)}</span>
         </div>
         ${agotado ? '<span class="badge badge-red" style="margin-top:6px">Agotado</span>' : ''}
@@ -346,7 +353,7 @@ function mostrarDetalleProducto(p) {
   const cant = cantidadEnCarrito(p.id);
   const agotado = p.stock <= 0;
   const oferta = tieneOferta(p);
-  const pctOferta = oferta ? Math.round((1 - p.precioVenta / p.precioAnterior) * 100) : 0;
+  const pctOferta = oferta ? p.descuentoPorcentaje : 0;
   showModal(`
     <div class="cat-img-wrap" style="border-radius:12px; aspect-ratio:1.3">
       ${oferta ? `<span class="cat-badge-oferta">OFERTA -${pctOferta}%</span>` : ''}
@@ -356,7 +363,7 @@ function mostrarDetalleProducto(p) {
     <h2 style="margin:4px 0">${escapeHtml(p.nombre)}</h2>
     ${p.descripcion ? `<p class="text-dim" style="font-size:13.5px">${escapeHtml(p.descripcion)}</p>` : ''}
     <div class="cat-price" style="font-size:24px; margin-top:8px">
-      ${oferta ? `<span class="cat-price-antes" style="font-size:15px">${money(p.precioAnterior)}</span>` : ''}
+      ${oferta ? `<span class="cat-price-antes" style="font-size:15px">${money(precioAntesDeOferta(p))}</span>` : ''}
       <span class="${oferta ? 'cat-price-oferta' : ''}">${money(p.precioVenta)}</span>
     </div>
     ${agotado ? '<span class="badge badge-red" style="margin-top:6px">Agotado</span>' : '<span class="badge badge-green" style="margin-top:6px">Disponible</span>'}
