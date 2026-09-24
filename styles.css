@@ -27,6 +27,7 @@ button, input, select { font-family: inherit; font-size: 15px; }
 
 .tz-tech { color: #cfd6e4; font-weight: 800; }
 .tz-zone { color: var(--blue-glow); font-weight: 800; }
+.text-dim { color: var(--text-dim); }
 
 /* ---- Login ---- */
 .login-view {
@@ -134,15 +135,18 @@ input[type=file] { color: var(--text-dim); font-size: 13px; }
   top: 53px;
   background: var(--bg);
   z-index: 5;
+  overflow-x: auto;
 }
 .tab-btn {
-  flex: 1;
-  padding: 13px 8px;
+  flex: none;
+  min-width: 92px;
+  padding: 13px 10px;
   background: none;
   border: none;
   color: var(--text-dim);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13.5px;
+  white-space: nowrap;
   cursor: pointer;
   border-bottom: 2px solid transparent;
 }
@@ -209,6 +213,23 @@ input[type=file] { color: var(--text-dim); font-size: 13px; }
 .toast.error { border-left-color: var(--red); }
 
 .moroso-row { border-color: rgba(255,92,92,0.5); }
+
+/* ---- Punto de Venta web ---- */
+.pos-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 90px; }
+.pos-prod-img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 6px; background: var(--bg-panel-2); }
+.pos-prod-img-empty { width: 100%; aspect-ratio: 1; border-radius: 8px; margin-bottom: 6px; background: var(--bg-panel-2); display: flex; align-items: center; justify-content: center; font-size: 28px; opacity: 0.5; }
+.pos-qty { display: flex; align-items: center; justify-content: space-between; gap: 6px; background: var(--bg-panel-2); border-radius: 10px; padding: 3px; margin-top: 6px; }
+.pos-qty button { width: 30px; height: 30px; border-radius: 8px; border: none; background: var(--bg-panel); color: var(--text); font-size: 17px; font-weight: 700; cursor: pointer; }
+.pos-qty button:disabled { opacity: 0.35; cursor: not-allowed; }
+.pos-qty span { font-weight: 800; min-width: 24px; text-align: center; font-size: 14px; }
+.pos-cart-bar { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(180deg, transparent, var(--bg) 30%); z-index: 500; }
+.pos-cart-bar[hidden] { display: none; }
+.pos-cart-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.pos-cart-item:last-child { border-bottom: none; }
+.pos-cart-item-info { flex: 1; min-width: 0; font-size: 13px; }
+.pos-metodo-pago { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.pos-metodo-pago button { flex: 1; min-width: 110px; }
+.pos-metodo-pago button.active { background: var(--blue); border-color: var(--blue); color: #fff; }
 
 /* ---- Confirmacion visual (chulo verde) al escanear/confirmar ---- */
 .success-overlay {
