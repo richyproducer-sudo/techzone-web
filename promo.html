@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Promocion 10% OFF</title>
+<link rel="icon" type="image/png" href="logo.png" />
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .promo-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; text-align: center; }
+  .promo-card { width: 100%; max-width: 420px; }
+  .promo-logo { width: 64px; height: 64px; object-fit: contain; margin-bottom: 10px; }
+  .promo-pct { font-size: 52px; font-weight: 800; color: var(--green); line-height: 1; margin: 6px 0; }
+  .promo-sub { color: var(--text-dim); font-size: 14px; margin-bottom: 22px; }
+  .promo-box { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-bottom: 16px; }
+  .promo-codigo { font-family: monospace; font-size: 28px; font-weight: 800; letter-spacing: 2px; color: var(--text); margin: 8px 0; word-break: break-all; }
+  .promo-terminos { font-size: 12px; color: var(--text-dim); margin-top: 18px; line-height: 1.5; }
+  .promo-loading { color: var(--text-dim); }
+</style>
+</head>
+<body>
+  <div class="promo-wrap">
+    <div class="promo-card">
+      <img src="logo.png" class="promo-logo" alt="" />
+      <div class="promo-pct" id="promo-pct-titulo">OFF</div>
+      <div class="promo-sub" id="promo-sub-titulo"></div>
+      <div class="promo-box" id="promo-contenido">
+        <div class="promo-loading">Generando tu codigo...</div>
+      </div>
+      <div class="promo-terminos">
+        Muestra este codigo en la tienda al momento de pagar. Valido una vez por cliente, no acumulable con otras promociones.
+      </div>
+    </div>
+  </div>
+
+  <script src="firebase-config.js"></script>
+  <script type="module" src="promo.js"></script>
+</body>
+</html>
