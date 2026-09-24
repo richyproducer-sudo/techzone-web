@@ -1,3 +1,31 @@
+/* ---- Fondo animado con vida: orbes de luz que flotan lentamente detras
+   de todo el contenido ---- */
+.ambient-bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.ambient-bg .orb { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.32; animation: orbFloat 24s ease-in-out infinite; will-change: transform; }
+.ambient-bg .orb-1 { width: 360px; height: 360px; background: var(--blue); top: -100px; left: -80px; }
+.ambient-bg .orb-2 { width: 300px; height: 300px; background: var(--green); bottom: -80px; right: -60px; animation-duration: 30s; animation-delay: -8s; }
+.ambient-bg .orb-3 { width: 240px; height: 240px; background: var(--blue-glow); top: 45%; right: 8%; animation-duration: 26s; animation-delay: -14s; }
+@keyframes orbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(40px, -50px) scale(1.15); }
+  66% { transform: translate(-30px, 30px) scale(0.9); }
+}
+
+body { animation: pageFadeIn 0.5s ease; }
+@keyframes pageFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---- Header con efecto de vidrio esmerilado y logo que respira ---- */
+.app-header, .shop-header { background: rgba(11,14,20,0.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.brand-logo-img { animation: logoBreathe 5s ease-in-out infinite; }
+@keyframes logoBreathe {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(47,139,255,0)); }
+  50% { filter: drop-shadow(0 0 10px rgba(47,139,255,0.55)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-bg .orb, body, .brand-logo-img { animation: none !important; }
+}
+
 .cat-eslogan { text-align: center; font-size: 12px; padding: 6px 14px 0; }
 .cat-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 4px; }
 .cat-chip {
@@ -14,10 +42,26 @@
 .cat-chip.active { background: var(--blue); border-color: var(--blue); color: #fff; }
 .cat-chip-oferta { border-color: var(--red); color: var(--red); }
 .cat-chip-oferta.active { background: var(--red); border-color: var(--red); color: #fff; }
+.cat-chip { transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
+.cat-chip:hover { border-color: var(--blue); color: var(--text); transform: translateY(-1px); }
+.cat-chip.active { box-shadow: 0 4px 14px rgba(47,139,255,0.35); }
+.cat-chip-oferta.active { box-shadow: 0 4px 14px rgba(255,92,92,0.35); }
 .cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.cat-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; }
+.cat-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  animation: cardIn 0.45s cubic-bezier(.2,.8,.3,1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+@keyframes cardIn { from { opacity: 0; transform: translateY(18px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.cat-card:hover { transform: translateY(-4px); border-color: rgba(47,139,255,0.5); box-shadow: 0 10px 28px rgba(0,0,0,0.4), 0 0 0 1px rgba(47,139,255,0.15); }
 .cat-img-wrap { width: 100%; aspect-ratio: 1; background: var(--bg-panel-2); display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.cat-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.cat-img-wrap img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+.cat-card:hover .cat-img-wrap img { transform: scale(1.08); }
 .cat-img-empty { font-size: 32px; opacity: 0.5; }
 .cat-info { padding: 8px 10px 10px; }
 .cat-name { font-size: 12.5px; font-weight: 600; line-height: 1.3; margin-bottom: 4px; min-height: 2.6em; }
@@ -25,8 +69,15 @@
 .cat-price { font-size: 14.5px; font-weight: 800; color: var(--blue-glow); }
 .cat-price-antes { font-size: 11.5px; color: var(--text-dim); text-decoration: line-through; margin-right: 6px; }
 .cat-price-oferta { color: var(--red); }
-.cat-badge-oferta { display: inline-block; background: var(--red); color: #fff; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 6px; position: absolute; top: 8px; left: 8px; z-index: 2; }
+.cat-badge-oferta { display: inline-block; background: var(--red); color: #fff; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 6px; position: absolute; top: 8px; left: 8px; z-index: 2; animation: badgePulse 1.8s ease-in-out infinite; }
+@keyframes badgePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,92,92,0.55); }
+  50% { box-shadow: 0 0 0 6px rgba(255,92,92,0); }
+}
 .cat-img-wrap { position: relative; }
+@media (prefers-reduced-motion: reduce) {
+  .cat-card, .cat-badge-oferta { animation: none !important; }
+}
 
 /* ---- Logo de la tienda en el header/footer (favicon.html usa el mismo
    archivo logo.png) ---- */

@@ -97,8 +97,14 @@ input[type=file] { color: var(--text-dim); font-size: 13px; }
   color: var(--text);
   font-weight: 600;
   cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
+.btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.35); filter: brightness(1.06); }
 .btn:active { transform: scale(0.98); }
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+  .btn:hover:not(:disabled) { transform: none; }
+}
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn:disabled:active { transform: none; }
 .btn-primary { background: linear-gradient(135deg, var(--blue), var(--blue-dark)); border-color: transparent; color: #fff; }

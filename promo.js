@@ -69,8 +69,23 @@ async function obtenerOCrearCodigoPromo() {
   return registro;
 }
 
+// Cuenta desde 0 hasta el porcentaje real para que la cifra se sienta viva
+// en vez de aparecer estatica.
+function animarContadorPorcentaje(destino) {
+  const el = document.getElementById('promo-pct-titulo');
+  const duracion = 700;
+  const inicio = performance.now();
+  function paso(ahora) {
+    const t = Math.min(1, (ahora - inicio) / duracion);
+    const valor = Math.round(destino * (1 - Math.pow(1 - t, 3)));
+    el.textContent = `${valor}% OFF`;
+    if (t < 1) requestAnimationFrame(paso);
+  }
+  requestAnimationFrame(paso);
+}
+
 async function cargar() {
-  document.getElementById('promo-pct-titulo').textContent = `${PROMO_PORCENTAJE}% OFF`;
+  animarContadorPorcentaje(PROMO_PORCENTAJE);
   document.getElementById('promo-sub-titulo').textContent = `En compras superiores a ${money(PROMO_MONTO_MINIMO)}`;
 
   const cont = document.getElementById('promo-contenido');

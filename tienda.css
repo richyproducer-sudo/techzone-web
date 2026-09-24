@@ -8,7 +8,21 @@
   border-radius: var(--radius);
   padding: 12px 14px;
   margin-bottom: 14px;
+  position: relative;
+  overflow: hidden;
+  animation: bannerPopIn 0.4s cubic-bezier(.2,.8,.3,1) both;
 }
+@keyframes bannerPopIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.codigo-descuento-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.14) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: shimmer 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes shimmer { 0% { background-position: 220% 0; } 100% { background-position: -220% 0; } }
 .codigo-descuento-icono { font-size: 26px; flex: none; }
 .codigo-descuento-texto { flex: 1; min-width: 0; font-size: 12px; color: var(--text-dim); }
 .codigo-descuento-valor { font-size: 17px; font-weight: 800; color: var(--green); letter-spacing: 1px; font-family: monospace; }
@@ -58,6 +72,8 @@
   padding: 0 4px;
 }
 .shop-cart-badge[hidden] { display: none; }
+.shop-cart-badge.bump { animation: badgeBump 0.35s ease; }
+@keyframes badgeBump { 0% { transform: scale(1); } 40% { transform: scale(1.5); } 100% { transform: scale(1); } }
 .shop-search { width: 100%; }
 
 /* ---- Hero ---- */
@@ -65,10 +81,20 @@
   padding: 26px 18px;
   text-align: center;
   background: radial-gradient(circle at 30% 20%, rgba(47,139,255,0.18), transparent 60%), linear-gradient(180deg, var(--bg-panel), var(--bg));
+  background-size: 180% 180%, 100% 100%;
+  animation: heroGlow 9s ease-in-out infinite;
   border-bottom: 1px solid var(--border);
 }
-.shop-hero-title { font-size: 21px; font-weight: 800; line-height: 1.3; }
-.shop-hero-sub { font-size: 12.5px; color: var(--text-dim); margin-top: 6px; }
+@keyframes heroGlow {
+  0%, 100% { background-position: 30% 20%, 0 0; }
+  50% { background-position: 65% 55%, 0 0; }
+}
+.shop-hero-title { font-size: 21px; font-weight: 800; line-height: 1.3; animation: heroTextIn 0.6s ease both; }
+.shop-hero-sub { font-size: 12.5px; color: var(--text-dim); margin-top: 6px; animation: heroTextIn 0.6s ease 0.1s both; }
+@keyframes heroTextIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .shop-hero, .codigo-descuento-card::after { animation: none !important; }
+}
 
 /* ---- Franja de confianza ---- */
 .shop-trust {
@@ -105,6 +131,8 @@
 .shop-cat-tile-img img { width: 100%; height: 100%; object-fit: cover; }
 .shop-cat-tile-label { font-size: 10.5px; padding: 6px 4px; font-weight: 600; }
 .shop-cat-tile.active { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+.shop-cat-tile { transition: transform 0.2s ease, border-color 0.2s ease; }
+.shop-cat-tile:hover { transform: translateY(-3px); border-color: var(--blue); }
 
 /* ---- Footer ---- */
 .shop-footer { text-align: center; padding: 30px 16px 16px; border-top: 1px solid var(--border); margin-top: 20px; }

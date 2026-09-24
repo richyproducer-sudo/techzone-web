@@ -241,13 +241,13 @@ function pintarGrid() {
     return;
   }
 
-  grid.innerHTML = `<div class="cat-grid">${filtrados.map((p) => {
+  grid.innerHTML = `<div class="cat-grid">${filtrados.map((p, idx) => {
     const cant = cantidadEnCarrito(p.id);
     const agotado = p.stock <= 0;
     const oferta = tieneOferta(p);
     const pctOferta = oferta ? p.descuentoPorcentaje : 0;
     return `
-    <div class="cat-card" data-producto="${escapeHtml(p.id)}">
+    <div class="cat-card" data-producto="${escapeHtml(p.id)}" style="--i:${idx % 12}">
       <div class="cat-img-wrap">
         ${oferta ? `<span class="cat-badge-oferta">OFERTA -${pctOferta}%</span>` : ''}
         ${p.imagen ? `<img src="${p.imagen}" alt="" loading="lazy" />` : `<span class="cat-img-empty">📦</span>`}
@@ -361,6 +361,11 @@ function actualizarBotonFlotante() {
   const n = cantidadTotalCarrito();
 
   badge.hidden = n === 0;
+  if (badge.textContent !== String(n) && n > 0) {
+    badge.classList.remove('bump');
+    void badge.offsetWidth;
+    badge.classList.add('bump');
+  }
   badge.textContent = n;
 
   if (n === 0) {
