@@ -10,7 +10,7 @@ import {
   setPersistence, browserLocalPersistence
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
-  getFirestore, collection, doc, getDoc, setDoc, onSnapshot, query, where, getDocs,
+  getFirestore, collection, doc, getDoc, onSnapshot, query, where, getDocs,
   runTransaction, orderBy, limit, addDoc, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import {
@@ -36,18 +36,10 @@ setPersistence(auth, browserLocalPersistence).catch(() => {});
 
 let despachosCache = [];
 let creditosCache = [];
-let productosCache = [];
 let currentTab = 'despachos';
 let unsubDespachos = null;
 let unsubCreditos = null;
-let unsubProductos = null;
 let qrScanner = null;
-
-let inventarioBusqueda = '';
-let posBusqueda = '';
-let posCarrito = [];
-let posCupon = null;
-let posMetodoPago = 'efectivo';
 
 // ---------------------------------------------------------------------------
 // Utilidades
@@ -229,7 +221,6 @@ function mostrarPantallaBloqueo() {
   bioLocked = true;
   if (unsubDespachos) unsubDespachos();
   if (unsubCreditos) unsubCreditos();
-  if (unsubProductos) unsubProductos();
   document.getElementById('login-view').hidden = false;
   document.getElementById('app-view').hidden = true;
   document.getElementById('login-box-password').hidden = true;
@@ -321,7 +312,6 @@ onAuthStateChanged(auth, (user) => {
     document.getElementById('login-box-biometric').hidden = true;
     if (unsubDespachos) unsubDespachos();
     if (unsubCreditos) unsubCreditos();
-    if (unsubProductos) unsubProductos();
   }
 });
 
@@ -338,11 +328,8 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
 });
 
 function renderTab() {
-  document.getElementById('pos-cart-bar').hidden = currentTab !== 'pos' || !posCarrito.length;
   if (currentTab === 'despachos') renderDespachos();
   else if (currentTab === 'cartera') renderCartera();
-  else if (currentTab === 'inventario') renderInventario();
-  else if (currentTab === 'pos') renderPOS();
   else if (currentTab === 'asistencia') renderAsistencia();
 }
 
@@ -463,13 +450,6 @@ function startListeners() {
     creditosCache = snap.docs.map((d) => d.data());
     if (currentTab === 'cartera') renderCartera();
   }, (err) => toast('Error cargando cartera: ' + err.message, 'error'));
-
-  const productosQuery = query(collection(db, 'productos'), orderBy('nombre'));
-  unsubProductos = onSnapshot(productosQuery, (snap) => {
-    productosCache = snap.docs.map((d) => d.data());
-    if (currentTab === 'inventario') renderInventario();
-    else if (currentTab === 'pos') pintarPOSGrid();
-  }, (err) => toast('Error cargando productos: ' + err.message, 'error'));
 }
 
 // ---------------------------------------------------------------------------
@@ -812,324 +792,6 @@ async function registrarAbono(creditoId) {
   } catch (err) {
     toast(err.message, 'error');
   } finally {
-    btn.disabled = false;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Inventario: ver el stock real (en vivo) y ajustarlo manualmente. No crea
-// ni borra productos ni cambia precio/foto/nombre desde aqui, eso se sigue
-// haciendo desde la app de escritorio; esto es solo para consultar/corregir
-// el stock desde el celular.
-// ---------------------------------------------------------------------------
-function renderInventario() {
-  const content = document.getElementById('content');
-  content.innerHTML = `
-    <input type="text" id="inv-buscar" placeholder="Buscar producto..." style="margin-bottom:12px" value="${escapeHtml(inventarioBusqueda)}" />
-    <div id="inv-lista"></div>
-  `;
-  document.getElementById('inv-buscar').addEventListener('input', (e) => {
-    inventarioBusqueda = e.target.value;
-    pintarInventarioLista();
-  });
-  pintarInventarioLista();
-}
-
-function pintarInventarioLista() {
-  const cont = document.getElementById('inv-lista');
-  if (!cont) return;
-  const q = inventarioBusqueda.toLowerCase();
-  const lista = productosCache.filter((p) => !q || (p.nombre || '').toLowerCase().includes(q));
-  if (!lista.length) {
-    cont.innerHTML = '<div class="empty-state">No hay productos que coincidan.</div>';
-    return;
-  }
-  cont.innerHTML = lista.map((p) => `
-    <div class="card" data-inv-prod="${escapeHtml(p.id)}">
-      <div class="card-title">${escapeHtml(p.nombre)}</div>
-      <div class="card-row"><span>Categoria</span><strong>${escapeHtml(p.categoria || 'Otros')}</strong></div>
-      <div class="card-row"><span>Precio</span><strong>${money(p.precioVenta)}</strong></div>
-      <div class="card-row"><span>Stock</span><strong>${p.stock <= (p.stockMinimo || 0) ? `<span class="badge badge-red">${p.stock}</span>` : p.stock}</strong></div>
-    </div>
-  `).join('');
-  cont.querySelectorAll('[data-inv-prod]').forEach((card) => {
-    card.addEventListener('click', () => openAjustarStockModal(card.dataset.invProd));
-  });
-}
-
-function openAjustarStockModal(id) {
-  const p = productosCache.find((x) => String(x.id) === String(id));
-  if (!p) return;
-  showModal(`
-    <h2>${escapeHtml(p.nombre)}</h2>
-    <div class="card-row"><span>Stock actual</span><strong>${p.stock}</strong></div>
-    <div class="form-group">
-      <label>Nuevo stock</label>
-      <input type="number" id="nuevo-stock" min="0" value="${p.stock}" />
-    </div>
-    <div class="modal-actions">
-      <button class="btn" id="btn-cerrar-stock">Cancelar</button>
-      <button class="btn btn-primary" id="btn-guardar-stock">Guardar</button>
-    </div>
-  `, () => {
-    document.getElementById('btn-cerrar-stock').addEventListener('click', closeModal);
-    document.getElementById('btn-guardar-stock').addEventListener('click', async () => {
-      const nuevo = Number(document.getElementById('nuevo-stock').value);
-      if (!Number.isFinite(nuevo) || nuevo < 0) { toast('Ingresa un stock valido', 'error'); return; }
-      const btn = document.getElementById('btn-guardar-stock');
-      btn.disabled = true;
-      try {
-        await runTransaction(db, async (tx) => {
-          const ref = doc(db, 'productos', String(p.id));
-          const fresh = await tx.get(ref);
-          if (!fresh.exists()) throw new Error('Producto no encontrado');
-          tx.update(ref, { stock: nuevo, updatedAt: serverTimestamp() });
-        });
-        closeModal();
-        toast('Stock actualizado', 'success');
-      } catch (err) {
-        toast(err.message, 'error');
-        btn.disabled = false;
-      }
-    });
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Punto de Venta web: version ligera del POS de escritorio para vender desde
-// el celular (efectivo o transferencia, con cupon opcional). El stock se
-// descuenta con una transaccion sobre la coleccion "productos" (la misma que
-// usa Inventario arriba); la app de escritorio convierte la venta en una
-// factura local normal al recibirla (ver electron/main.js, listener de
-// "ventasWeb"). No incluye credito de tienda, cotizaciones ni envios: eso se
-// sigue haciendo desde la app de escritorio.
-// ---------------------------------------------------------------------------
-function renderPOS() {
-  const content = document.getElementById('content');
-  content.innerHTML = `
-    <input type="text" id="pos-buscar" placeholder="Buscar producto..." style="margin-bottom:12px" value="${escapeHtml(posBusqueda)}" />
-    <div id="pos-grid" class="pos-grid"></div>
-  `;
-  document.getElementById('pos-buscar').addEventListener('input', (e) => {
-    posBusqueda = e.target.value;
-    pintarPOSGrid();
-  });
-  pintarPOSGrid();
-  document.getElementById('pos-cart-bar').hidden = !posCarrito.length;
-}
-
-function posCantidadEnCarrito(id) {
-  const item = posCarrito.find((i) => i.id === id);
-  return item ? item.cantidad : 0;
-}
-
-function posSubtotal() {
-  return posCarrito.reduce((s, i) => s + i.precioVenta * i.cantidad, 0);
-}
-
-function pintarPOSGrid() {
-  const grid = document.getElementById('pos-grid');
-  if (!grid) return;
-  const q = posBusqueda.toLowerCase();
-  const lista = productosCache.filter((p) => !q || (p.nombre || '').toLowerCase().includes(q));
-  if (!lista.length) {
-    grid.innerHTML = '<div class="empty-state">No hay productos que coincidan.</div>';
-    return;
-  }
-  grid.innerHTML = lista.map((p) => {
-    const cant = posCantidadEnCarrito(p.id);
-    const agotado = p.stock <= 0;
-    return `
-      <div class="card" style="padding:10px">
-        ${p.imagen ? `<img src="${p.imagen}" class="pos-prod-img" alt="" loading="lazy" />` : `<div class="pos-prod-img-empty">📦</div>`}
-        <div style="font-size:12.5px; font-weight:700; line-height:1.3; min-height:2.4em">${escapeHtml(p.nombre)}</div>
-        <div style="font-size:13.5px; font-weight:800; color:var(--blue-glow); margin:4px 0">${money(p.precioVenta)}</div>
-        <div style="font-size:11px; color:var(--text-dim)">Stock: ${p.stock}</div>
-        ${agotado ? '<span class="badge badge-red" style="margin-top:6px">Agotado</span>' : cant > 0 ? `
-          <div class="pos-qty">
-            <button data-pos-restar="${escapeHtml(p.id)}">-</button>
-            <span>${cant}</span>
-            <button data-pos-sumar="${escapeHtml(p.id)}" ${cant >= p.stock ? 'disabled' : ''}>+</button>
-          </div>
-        ` : `<button class="btn btn-sm btn-primary btn-block" style="margin-top:6px" data-pos-agregar="${escapeHtml(p.id)}">+ Agregar</button>`}
-      </div>
-    `;
-  }).join('');
-
-  grid.querySelectorAll('[data-pos-agregar]').forEach((btn) => btn.addEventListener('click', () => posAgregar(btn.dataset.posAgregar)));
-  grid.querySelectorAll('[data-pos-sumar]').forEach((btn) => btn.addEventListener('click', () => posCambiarCantidad(btn.dataset.posSumar, 1)));
-  grid.querySelectorAll('[data-pos-restar]').forEach((btn) => btn.addEventListener('click', () => posCambiarCantidad(btn.dataset.posRestar, -1)));
-}
-
-function posAgregar(id) {
-  const p = productosCache.find((x) => String(x.id) === String(id));
-  if (!p || p.stock <= 0) return;
-  posCarrito.push({ id: p.id, nombre: p.nombre, categoria: p.categoria, precioVenta: p.precioVenta, impuesto: p.impuesto != null ? p.impuesto : 19, cantidad: 1 });
-  pintarPOSGrid();
-  document.getElementById('pos-cart-bar').hidden = !posCarrito.length;
-}
-
-function posCambiarCantidad(id, delta) {
-  const item = posCarrito.find((i) => String(i.id) === String(id));
-  if (!item) return;
-  const prod = productosCache.find((x) => String(x.id) === String(id));
-  item.cantidad += delta;
-  if (item.cantidad <= 0) {
-    posCarrito = posCarrito.filter((i) => i !== item);
-  } else if (prod && item.cantidad > prod.stock) {
-    item.cantidad = prod.stock;
-  }
-  pintarPOSGrid();
-  document.getElementById('pos-cart-bar').hidden = !posCarrito.length;
-  if (document.getElementById('pos-carrito-modal')) pintarPOSCarritoModal();
-}
-
-document.getElementById('btn-pos-ver-carrito').addEventListener('click', () => mostrarPOSCarritoModal());
-
-function mostrarPOSCarritoModal() {
-  showModal(`<div id="pos-carrito-modal"></div>`, () => pintarPOSCarritoModal());
-}
-
-function pintarPOSCarritoModal() {
-  const cont = document.getElementById('pos-carrito-modal');
-  if (!cont) return;
-  const subtotal = posSubtotal();
-  const descuentoMonto = posCupon ? Math.round(subtotal * (posCupon.porcentaje / 100)) : 0;
-  const total = Math.max(0, subtotal - descuentoMonto);
-
-  cont.innerHTML = `
-    <h2>Carrito</h2>
-    ${posCarrito.length ? posCarrito.map((i) => `
-      <div class="pos-cart-item">
-        <div class="pos-cart-item-info">
-          <div style="font-weight:700">${escapeHtml(i.nombre)}</div>
-          <div class="text-dim">${money(i.precioVenta)} c/u</div>
-        </div>
-        <div class="pos-qty" style="margin-top:0">
-          <button data-cart-restar="${escapeHtml(i.id)}">-</button>
-          <span>${i.cantidad}</span>
-          <button data-cart-sumar="${escapeHtml(i.id)}">+</button>
-        </div>
-      </div>
-    `).join('') : '<div class="empty-state">El carrito esta vacio.</div>'}
-
-    <div class="form-group" style="margin-top:14px">
-      <label>Cupon de descuento (opcional)</label>
-      <div class="form-row">
-        <input type="text" id="pos-cupon-input" placeholder="Codigo del cliente" style="text-transform:uppercase" />
-        <button type="button" class="btn btn-sm" id="btn-pos-validar-cupon">Validar</button>
-      </div>
-      <div id="pos-cupon-estado" style="font-size:11.5px"></div>
-    </div>
-
-    <div class="card-row" style="font-size:15px; margin-top:10px"><span>Subtotal</span><strong>${money(subtotal)}</strong></div>
-    ${posCupon ? `<div class="card-row" style="font-size:13px; color:var(--green)"><span>Descuento (${posCupon.porcentaje}%)</span><strong>-${money(descuentoMonto)}</strong></div>` : ''}
-    <div class="card-row" style="font-size:19px; font-weight:800; border-top:1px dashed var(--border); padding-top:10px; margin-top:6px"><span>Total</span><strong>${money(total)}</strong></div>
-
-    <div class="section-title">Metodo de pago</div>
-    <div class="pos-metodo-pago">
-      <button type="button" class="btn ${posMetodoPago === 'efectivo' ? 'active' : ''}" data-metodo="efectivo">💵 Efectivo</button>
-      <button type="button" class="btn ${posMetodoPago === 'transferencia' ? 'active' : ''}" data-metodo="transferencia">🏦 Transferencia</button>
-    </div>
-
-    <div class="modal-actions">
-      <button class="btn" id="btn-pos-cerrar-carrito">Cerrar</button>
-      <button class="btn btn-primary" id="btn-pos-confirmar" ${posCarrito.length ? '' : 'disabled'}>Confirmar venta</button>
-    </div>
-  `;
-
-  cont.querySelectorAll('[data-metodo]').forEach((btn) => btn.addEventListener('click', () => {
-    cont.querySelectorAll('[data-metodo]').forEach((b) => b.classList.remove('active'));
-    btn.classList.add('active');
-    posMetodoPago = btn.dataset.metodo;
-  }));
-
-  cont.querySelectorAll('[data-cart-sumar]').forEach((btn) => btn.addEventListener('click', () => posCambiarCantidad(btn.dataset.cartSumar, 1)));
-  cont.querySelectorAll('[data-cart-restar]').forEach((btn) => btn.addEventListener('click', () => posCambiarCantidad(btn.dataset.cartRestar, -1)));
-
-  document.getElementById('btn-pos-cerrar-carrito').addEventListener('click', closeModal);
-
-  document.getElementById('btn-pos-validar-cupon').addEventListener('click', async () => {
-    const codigo = document.getElementById('pos-cupon-input').value.trim();
-    const estadoEl = document.getElementById('pos-cupon-estado');
-    if (!codigo) return;
-    estadoEl.innerHTML = '<span class="text-dim">Validando...</span>';
-    try {
-      await posValidarCupon(codigo);
-      estadoEl.innerHTML = `<span style="color:var(--green)">✓ Cupon valido: ${posCupon.porcentaje}% de descuento</span>`;
-      pintarPOSCarritoModal();
-    } catch (err) {
-      estadoEl.innerHTML = `<span style="color:var(--red)">${escapeHtml(err.message)}</span>`;
-    }
-  });
-
-  document.getElementById('btn-pos-confirmar').addEventListener('click', () => confirmarVentaPOS(posMetodoPago));
-}
-
-async function posValidarCupon(codigoTexto) {
-  const codigo = codigoTexto.trim().toUpperCase();
-  const snap = await getDoc(doc(db, 'descuentos', codigo));
-  if (!snap.exists()) throw new Error('Ese codigo no existe');
-  const data = snap.data();
-  if (data.usado) throw new Error('Ese codigo ya fue usado');
-  if (data.validoHasta && new Date(data.validoHasta).getTime() < Date.now()) throw new Error('Ese codigo ya vencio');
-  const subtotal = posSubtotal();
-  if (data.montoMinimo && subtotal < data.montoMinimo) {
-    throw new Error(`Este codigo requiere una compra minima de ${money(data.montoMinimo)} (llevas ${money(subtotal)})`);
-  }
-  posCupon = { codigo, porcentaje: data.porcentaje };
-}
-
-async function confirmarVentaPOS(metodoPago) {
-  if (!posCarrito.length) return;
-  const btn = document.getElementById('btn-pos-confirmar');
-  btn.disabled = true;
-  try {
-    // Se revalida y descuenta el stock de cada producto dentro de una sola
-    // transaccion, para que dos ventas al mismo tiempo (celular + mostrador)
-    // no dejen el stock en negativo.
-    await runTransaction(db, async (tx) => {
-      const refs = posCarrito.map((item) => doc(db, 'productos', String(item.id)));
-      const snaps = [];
-      for (const ref of refs) snaps.push(await tx.get(ref));
-      snaps.forEach((snap, i) => {
-        const item = posCarrito[i];
-        if (!snap.exists()) throw new Error(`${item.nombre} ya no existe`);
-        if (snap.data().stock < item.cantidad) throw new Error(`Stock insuficiente para ${item.nombre} (quedan ${snap.data().stock})`);
-      });
-      snaps.forEach((snap, i) => {
-        tx.update(refs[i], { stock: snap.data().stock - posCarrito[i].cantidad, updatedAt: serverTimestamp() });
-      });
-    });
-
-    const subtotal = posSubtotal();
-    const descuentoMonto = posCupon ? Math.round(subtotal * (posCupon.porcentaje / 100)) : 0;
-    const total = Math.max(0, subtotal - descuentoMonto);
-    const origenWebId = 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
-
-    await setDoc(doc(db, 'ventasWeb', origenWebId), {
-      origenWebId,
-      fecha: new Date().toISOString(),
-      items: posCarrito.map((i) => ({ productoId: i.id, nombre: i.nombre, categoria: i.categoria, precioUnitario: i.precioVenta, impuesto: i.impuesto, cantidad: i.cantidad })),
-      subtotal,
-      descuento: descuentoMonto,
-      total,
-      metodoPago,
-      vendedor: auth.currentUser ? auth.currentUser.email : null
-    });
-
-    if (posCupon) {
-      await setDoc(doc(db, 'descuentos', posCupon.codigo), { usado: true, usadoEn: new Date().toISOString() }, { merge: true });
-    }
-
-    posCarrito = [];
-    posCupon = null;
-    posMetodoPago = 'efectivo';
-    closeModal();
-    document.getElementById('pos-cart-bar').hidden = true;
-    showSuccessOverlay('Venta registrada', money(total));
-  } catch (err) {
-    toast(err.message, 'error');
     btn.disabled = false;
   }
 }
