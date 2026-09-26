@@ -4,7 +4,7 @@
 // carrito (localStorage) con tienda.js, asi que agregar productos aqui o
 // alla es lo mismo pedido.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-import { getFirestore, collection, getDocs, doc, setDoc } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 function money(n) {
   return '$ ' + Math.round(n || 0).toLocaleString('es-CO');
@@ -34,6 +34,18 @@ function generarCodigoAleatorio() {
   for (let i = 0; i < 6; i++) codigo += chars[Math.floor(Math.random() * chars.length)];
   return codigo;
 }
+// Revisa en Firestore que el codigo no exista ya (de otro visitante, de un
+// cupon manual o de la promo del QR, que comparten la misma coleccion) antes
+// de asignarlo, reintentando con uno nuevo en el caso extremadamente
+// improbable de que coincida con uno existente.
+async function generarCodigoUnico() {
+  for (let intento = 0; intento < 5; intento++) {
+    const codigo = generarCodigoAleatorio();
+    const snap = await getDoc(doc(db, 'descuentos', codigo));
+    if (!snap.exists()) return codigo;
+  }
+  return generarCodigoAleatorio() + '-' + Date.now().toString(36).slice(-4).toUpperCase();
+}
 async function obtenerOCrearCodigoDescuento(porcentaje) {
   try {
     const guardado = localStorage.getItem(CODIGO_KEY);
@@ -43,7 +55,7 @@ async function obtenerOCrearCodigoDescuento(porcentaje) {
   }
   if (!porcentaje) return null;
 
-  const registro = { codigo: generarCodigoAleatorio(), porcentaje, creadoEn: new Date().toISOString(), usado: false };
+  const registro = { codigo: await generarCodigoUnico(), porcentaje, creadoEn: new Date().toISOString(), usado: false };
   try {
     await setDoc(doc(db, 'descuentos', registro.codigo), registro);
   } catch (err) {
@@ -167,7 +179,14 @@ function pintarBannerDescuento() {
 }
 
 function tieneOferta(p) {
-  return p.precioAnterior && p.precioAnterior > p.precioVenta;
+  return p.descuentoPorcentaje > 0;
+}
+// El precio "antes" tachado se calcula a partir del % de descuento y el
+// precio de venta actual (que sigue siendo el precio real que se cobra).
+function precioAntesDeOferta(p) {
+  const pct = Number(p.descuentoPorcentaje) || 0;
+  if (pct <= 0 || pct >= 100) return p.precioVenta;
+  return Math.round(p.precioVenta / (1 - pct / 100));
 }
 
 function pintarCategorias() {
@@ -200,22 +219,22 @@ function pintarGrid() {
     return;
   }
 
-  grid.innerHTML = `<div class="cat-grid">${filtrados.map((p) => {
+  grid.innerHTML = `<div class="cat-grid">${filtrados.map((p, idx) => {
     const cant = cantidadEnCarrito(p.id);
     const agotado = p.stock <= 0;
     const oferta = tieneOferta(p);
-    const pctOferta = oferta ? Math.round((1 - p.precioVenta / p.precioAnterior) * 100) : 0;
+    const pctOferta = oferta ? p.descuentoPorcentaje : 0;
     return `
-    <div class="cat-card" data-producto="${escapeHtml(p.id)}">
+    <div class="cat-card" data-producto="${escapeHtml(p.id)}" style="--i:${idx % 12}">
       <div class="cat-img-wrap">
-        ${oferta ? `<span class="cat-badge-oferta">-${pctOferta}%</span>` : ''}
+        ${oferta ? `<span class="cat-badge-oferta">OFERTA -${pctOferta}%</span>` : ''}
         ${p.imagen ? `<img src="${p.imagen}" alt="" loading="lazy" />` : `<span class="cat-img-empty">📦</span>`}
       </div>
       <div class="cat-info">
         <div class="cat-cat">${escapeHtml(p.categoria || 'Otros')}</div>
         <div class="cat-name">${escapeHtml(p.nombre)}</div>
         <div class="cat-price">
-          ${oferta ? `<span class="cat-price-antes">${money(p.precioAnterior)}</span>` : ''}
+          ${oferta ? `<span class="cat-price-antes">${money(precioAntesDeOferta(p))}</span>` : ''}
           <span class="${oferta ? 'cat-price-oferta' : ''}">${money(p.precioVenta)}</span>
         </div>
         ${agotado ? '<span class="badge badge-red" style="margin-top:6px">Agotado</span>' : ''}
@@ -274,6 +293,11 @@ function actualizarBotonFlotante() {
   const n = cantidadTotalCarrito();
 
   badge.hidden = n === 0;
+  if (badge.textContent !== String(n) && n > 0) {
+    badge.classList.remove('bump');
+    void badge.offsetWidth;
+    badge.classList.add('bump');
+  }
   badge.textContent = n;
 
   if (n === 0) {
@@ -346,17 +370,17 @@ function mostrarDetalleProducto(p) {
   const cant = cantidadEnCarrito(p.id);
   const agotado = p.stock <= 0;
   const oferta = tieneOferta(p);
-  const pctOferta = oferta ? Math.round((1 - p.precioVenta / p.precioAnterior) * 100) : 0;
+  const pctOferta = oferta ? p.descuentoPorcentaje : 0;
   showModal(`
     <div class="cat-img-wrap" style="border-radius:12px; aspect-ratio:1.3">
-      ${oferta ? `<span class="cat-badge-oferta">-${pctOferta}%</span>` : ''}
+      ${oferta ? `<span class="cat-badge-oferta">OFERTA -${pctOferta}%</span>` : ''}
       ${p.imagen ? `<img src="${p.imagen}" alt="" />` : `<span class="cat-img-empty" style="font-size:48px">📦</span>`}
     </div>
     <div class="cat-cat" style="margin-top:14px">${escapeHtml(p.categoria || 'Otros')}</div>
     <h2 style="margin:4px 0">${escapeHtml(p.nombre)}</h2>
     ${p.descripcion ? `<p class="text-dim" style="font-size:13.5px">${escapeHtml(p.descripcion)}</p>` : ''}
     <div class="cat-price" style="font-size:24px; margin-top:8px">
-      ${oferta ? `<span class="cat-price-antes" style="font-size:15px">${money(p.precioAnterior)}</span>` : ''}
+      ${oferta ? `<span class="cat-price-antes" style="font-size:15px">${money(precioAntesDeOferta(p))}</span>` : ''}
       <span class="${oferta ? 'cat-price-oferta' : ''}">${money(p.precioVenta)}</span>
     </div>
     ${agotado ? '<span class="badge badge-red" style="margin-top:6px">Agotado</span>' : '<span class="badge badge-green" style="margin-top:6px">Disponible</span>'}
