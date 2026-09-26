@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Politica de Privacidad - TechZone</title>
+<link rel="icon" type="image/png" href="logo.png" />
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .legal-header { text-align: center; padding: 28px 16px 10px; }
+  .legal-header img { width: 48px; height: 48px; border-radius: 10px; }
+  .legal-header .brand { font-size: 22px; margin-top: 8px; }
+  .legal-updated { color: var(--text-dim); font-size: 12px; margin-bottom: 22px; }
+  .legal h2 { font-size: 16px; margin: 0 0 8px; }
+  .legal p, .legal li { font-size: 14px; line-height: 1.6; color: var(--text); }
+  .legal ul { margin: 6px 0; padding-left: 20px; }
+  .legal a { color: var(--blue-glow); }
+  .back-link { display: inline-block; margin-bottom: 16px; color: var(--text-dim); font-size: 13px; text-decoration: none; }
+  .back-link:hover { color: var(--text); }
+</style>
+</head>
+<body>
+  <div class="content">
+    <div class="legal-header">
+      <img src="logo.png" alt="" />
+      <div class="brand"><span class="tz-tech">Tech</span><span class="tz-zone">Zone</span></div>
+    </div>
+
+    <a href="index.html" class="back-link">&larr; Volver</a>
+    <h1 style="font-size:22px; margin-bottom:4px">Politica de Privacidad</h1>
+    <div class="legal-updated">Ultima actualizacion: 25 de septiembre de 2026</div>
+
+    <div class="legal">
+      <div class="card">
+        <p>TechZone es un software de gestion (punto de venta, inventario, despachos, cartera, servicio tecnico
+        y catalogo/tienda en linea) que negocios de tecnologia usan para administrar su operacion diaria. Cada
+        negocio que adquiere una licencia de TechZone instala su propia copia y es responsable de los datos de
+        su tienda y de sus clientes (lo que en Colombia la Ley 1581 de 2012 llama el "responsable del
+        tratamiento"). Esta pagina explica que datos procesa el software, donde quedan y como se protegen.</p>
+      </div>
+
+      <h2>1. Datos de la aplicacion de escritorio (TechZone Manager)</h2>
+      <div class="card">
+        <p>El inventario, las ventas, cotizaciones, clientes, garantias y servicios tecnicos se guardan
+        <strong>unicamente en el computador donde esta instalada la aplicacion</strong>, en archivos locales.
+        Esta informacion nunca se envia a los servidores de TechZone ni a terceros; el negocio que usa el
+        software es el unico que tiene acceso a ella y es responsable de hacerle copias de seguridad.</p>
+      </div>
+
+      <h2>2. Modulo web opcional (Despachos, Cartera, Asistencia, Tienda)</h2>
+      <div class="card">
+        <p>Si el negocio activa el modulo web, algunos datos se sincronizan usando Firebase (Google) con el
+        proyecto que el propio negocio configura:</p>
+        <ul>
+          <li><strong>Empleados:</strong> correo, nombre y rol, usados solo para iniciar sesion y decidir que
+          puede ver cada persona.</li>
+          <li><strong>Asistencia:</strong> fecha, hora y el UID del empleado que marco. La huella o el
+          reconocimiento facial se procesan con el lector del propio dispositivo (tecnologia WebAuthn); la
+          huella o el rostro <strong>nunca salen del equipo ni llegan a TechZone</strong>, solo se usa una
+          confirmacion criptografica para saber que fue esa persona.</li>
+          <li><strong>Despachos y cartera:</strong> datos del pedido o del credito (cliente, direccion, montos,
+          estado) para que el equipo los vea tanto desde el computador como desde el celular.</li>
+          <li><strong>Catalogo/Tienda:</strong> nombre, precio, imagen y categoria de los productos que el
+          negocio decide publicar. No requiere que el comprador cree una cuenta.</li>
+        </ul>
+        <p>Estos datos quedan en el proyecto de Firebase que administra cada negocio, protegidos con reglas que
+        exigen haber iniciado sesion (ver <code>firestore.rules</code>).</p>
+      </div>
+
+      <h2>3. Clientes que compran en la tienda en linea</h2>
+      <div class="card">
+        <p>Navegar el catalogo es anonimo: el carrito de compras se guarda solo en el navegador de quien
+        compra (no en un servidor). Al terminar el pedido, la pagina abre WhatsApp con un mensaje
+        prellenado; a partir de ahi la conversacion y los datos que la persona decida compartir (nombre,
+        direccion, telefono) quedan sujetos a la <a href="https://www.whatsapp.com/legal/privacy-policy" target="_blank" rel="noopener">politica de privacidad de WhatsApp</a>,
+        no a esta. TechZone no recibe ni almacena esos mensajes.</p>
+      </div>
+
+      <h2>4. Licencias y activacion</h2>
+      <div class="card">
+        <p>Para activar una copia de TechZone se registra el nombre del negocio, el plan contratado y la
+        fecha de vencimiento, con el fin de generar y validar el codigo de activacion. Esta informacion
+        identifica que negocio usa el software, pero no incluye sus ventas ni los datos de sus clientes.</p>
+      </div>
+
+      <h2>5. Lo que TechZone no hace</h2>
+      <div class="card">
+        <ul>
+          <li>No vende ni comparte datos de negocios o de sus clientes con terceros.</li>
+          <li>No procesa pagos ni guarda datos de tarjetas: las compras se coordinan por WhatsApp directamente
+          entre el negocio y su cliente.</li>
+          <li>No rastrea la ubicacion de empleados ni de compradores.</li>
+        </ul>
+      </div>
+
+      <h2>6. Tus derechos</h2>
+      <div class="card">
+        <p>Si eres cliente de un negocio que usa TechZone y quieres consultar, corregir o eliminar tus datos
+        (por ejemplo, los guardados en una factura o una cotizacion), debes solicitarlo directamente a ese
+        negocio: es quien administra y controla esa informacion. Si tu duda es sobre el software TechZone en
+        si (por ejemplo, tu licencia o esta politica), escribenos por
+        <a href="https://wa.me/573135639329" target="_blank" rel="noopener">WhatsApp</a>.</p>
+      </div>
+
+      <h2>7. Cambios a esta politica</h2>
+      <div class="card">
+        <p>Si esta politica cambia, se actualizara la fecha al inicio de esta pagina. Te recomendamos
+        revisarla de vez en cuando.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
